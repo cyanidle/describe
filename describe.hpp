@@ -7,7 +7,7 @@
 #include <utility>
 #include <type_traits>
 
-namespace description
+namespace describe
 {
 
 template<auto field>
@@ -114,7 +114,7 @@ template<typename T> constexpr auto has_v = has<T>::value;
 template<typename T> constexpr auto Get() {return GetDescription(Tag<T>{});}
 
 template<auto...fields>
-constexpr auto Make(std::string_view clsname, std::string_view names) {
+constexpr auto Describe(std::string_view clsname, std::string_view names) {
     constexpr auto AllCount = sizeof...(fields);
     using Result = Description<Field<fields>...>;
     static_assert(AllCount);
@@ -140,8 +140,8 @@ constexpr auto Make(std::string_view clsname, std::string_view names) {
 #define _STRINGIFY2(...) #__VA_ARGS__
 #define _STRINGIFY(...) _STRINGIFY2(__VA_ARGS__)
 #define DESCRIBE(cls, ...) \
-inline constexpr auto GetDescription(::description::Tag<cls>) { using _ = cls; \
-    return ::description::Make<__VA_ARGS__>(_STRINGIFY(cls), _STRINGIFY(__VA_ARGS__)); \
+inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ = cls; \
+    return ::describe::Describe<__VA_ARGS__>(_STRINGIFY(cls), _STRINGIFY(__VA_ARGS__)); \
 }
 
 } //desc
