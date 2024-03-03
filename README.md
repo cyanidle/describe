@@ -16,9 +16,9 @@ struct Data {
 DESCRIBE(Data, &_::a, &_::b, &_::method)
 
 constexpr auto desc = decribe::Get<Data>();
-static_assert(desc.all_count == 3)
-static_assert(desc.fields_count == 2)
-static_assert(desc.methods_count == 1)
+static_assert(desc.all_count == 3);
+static_assert(desc.fields_count == 2);
+static_assert(desc.methods_count == 1);
 
 void print_fields(const Data& d) {  
     desc.for_each_field([&](auto f) {   
