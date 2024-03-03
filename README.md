@@ -5,7 +5,7 @@ Minimal C++ Reflection Library
 # Usage
 
 ```cpp
-#include<describe.hpp>
+#include<describe/describe.hpp>
 struct Data {   
     int a;
     int b;
@@ -29,7 +29,7 @@ void print_fields(const Data& d) {
     });
 }
 
-print_fields(Data{1, 2}); // -> "a: 1, b: 2,"
+print_fields(Data{1, 2}); // -> "a: 1, b: 2, "
 
 ```
 
