@@ -35,26 +35,35 @@ struct pack_elem<0, T, Ts...> {
     using type = T;
 };
 
+constexpr void strip_front(std::string_view& src) {
+    if (auto pref = src.find_first_not_of(' '); pref != std::string_view::npos) {
+        src = src.substr(pref);
+    }
+}
+
 constexpr void get_next_stripped(std::string_view& src, std::string_view* meta, std::string_view* name) {
     auto nextComma = src.find_first_of(',');
     auto result = src.substr(0, nextComma);
     auto initial = result;
-    src = src.substr(nextComma+1);
-    if (auto pref = result.find_first_not_of(' '); pref != std::string_view::npos) {
-        result = result.substr(pref);
-    }
+    src = src.substr(nextComma + 1);
+    strip_front(initial);
+    strip_front(result);
     if (auto pref = result.find_last_of(':'); pref != std::string_view::npos) {
         result = result.substr(pref + 1);
     }
     if (auto suff = result.find_last_not_of(' '); suff != std::string_view::npos) {
-        result = result.substr(0, suff+1);
+        result = result.substr(0, suff + 1);
     }
     if (name) {
         *name = result;
     }
     auto diff = initial.size() - result.size();
     if (diff && meta) {
-        *meta = initial.substr(0, diff - 2); // (meta(::))name
+        auto possibleMeta = initial.substr(0, diff - 2); // (&?)(meta(::))name
+        if (possibleMeta.size() && possibleMeta.front() == '&') {
+            possibleMeta = possibleMeta.substr(1);
+        }
+        *meta = possibleMeta;
     }
 }
 
@@ -140,11 +149,9 @@ constexpr auto Describe(std::string_view clsname, std::string_view names) {
     return result;
 }
 
-#define _STRINGIFY2(...) #__VA_ARGS__
-#define _STRINGIFY(...) _STRINGIFY2(__VA_ARGS__)
 #define DESCRIBE(cls, ...) \
 inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ = cls; \
-    return ::describe::Describe<__VA_ARGS__>(_STRINGIFY(cls), _STRINGIFY(__VA_ARGS__)); \
+    return ::describe::Describe<__VA_ARGS__>(#cls, #__VA_ARGS__); \
 }
 
 } //desc
