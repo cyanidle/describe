@@ -82,6 +82,9 @@ TEST_CASE("example") {
     constexpr auto desc = describe::Get<a::My>();
     // ^ this description can be used in compile-time functions!
     constexpr auto a = desc.get<0>();
+
+    static_assert(std::is_same_v<decltype(a), const describe::Field<&a::My::a>>);
+
     constexpr auto b = desc.get<1>(); //these are in the same order as in DESCRIBE()
     constexpr auto c = desc.get<2>();
     constexpr auto d = desc.get<3>();
