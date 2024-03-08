@@ -54,8 +54,19 @@ DESCRIBE(a::My, &_::a, &optional::b)
 
 }
 
+template<typename T>
+void print() {  
+    describe::Get<T>().for_each_field([](auto f){
+        if constexpr (f.meta == "optional") {   
+            std::cout << "optional:";
+        }
+        std::cout << f.name << ", ";
+    });
+}
+
 void test() {
-    auto desc = describe::Get<a::My>();
+    constexpr auto desc = describe::Get<a::My>();
+    // ^ this description can be used in compile-time functions!
     auto a = desc.get<0>();
     auto b = desc.get<1>(); //these are in the same order as in DESCRIBE()
     desc.cls_name == "My"; // true
@@ -66,5 +77,7 @@ void test() {
     
     b.name == "b"; // true
     b.meta == "optional"; // true
+    
+    print<a::T>(); // a, optional:b, 
 }
 ```
