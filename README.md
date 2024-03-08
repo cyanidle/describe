@@ -84,7 +84,7 @@ DESCRIBE(a::My, &_::a, &optional::b, one_of(foo|bar|baz)::c, in_range(0 < x < 15
 
 }
 
-void test() {
+TEST_CASE("example") {
     a::My obj;
     constexpr auto desc = describe::Get<a::My>();
     // ^ this description can be used in compile-time functions!
@@ -92,22 +92,24 @@ void test() {
     constexpr auto b = desc.get<1>(); //these are in the same order as in DESCRIBE()
     constexpr auto c = desc.get<2>();
     constexpr auto d = desc.get<3>();
-    desc.cls_name == "My"; // true
-    desc.ns_name == "a"; // true
-    
-    a.name == "a"; // true
+    static_assert(desc.fields_count == 4);
+    static_assert(desc.cls_name == "My");
+    static_assert(desc.ns_name == "a");
+
+    static_assert(a.name == "a");
     obj.*a.value = 33; // write value
-    a.meta == "_"; // true
-    
-    b.name == "b"; // true
-    b.meta == "optional"; // true
-    
-    c.name == "c";
-    c.meta == "one_of(foo|bar|baz)";
+    static_assert(a.meta == "_");
+
+    static_assert(b.name == "b");
+    static_assert(b.meta == "optional");
+
+    static_assert(c.name == "c");
+    static_assert(c.meta == "one_of(foo|bar|baz)");
     using c_type = decltype(of(c)); // ADL-powered helper to get type of field;
+    static_assert(std::is_same_v<c_type, std::string>);
     c_type current_value = obj.*c.value;
-    
-    d.name == "d";
-    d.meta == "in_range(0 < x < 15)";
+
+    static_assert(d.name == "d");
+    static_assert(d.meta == "in_range(0 < x < 15)");
 }
 ```

@@ -53,4 +53,55 @@ TEST_CASE("describe") {
     }
 }
 
+namespace a {
 
+// defining a meta-info tag for fields
+#define optional _
+// you can put anything before field it just must expand to &_ in the end
+#define one_of(...) &_
+#define in_range(...) &_
+
+struct My {
+    int a, b;
+    std::string c;
+    float d;
+};
+
+// inside this macro '_' is actually an alias to a::My
+DESCRIBE(a::My, &_::a, &optional::b, one_of(foo|bar|baz)::c, in_range(0 < x < 15)::d)
+//       ^ namespace        ^ everything is captured Literally (without macro expansion)
+//                     ^ '&' and '::' are discarded
+
+// NOTE: ::<field_name> is required!
+// Fields are separated based on commas! do not put commas inside meta data!
+
+}
+
+TEST_CASE("example") {
+    a::My obj;
+    constexpr auto desc = describe::Get<a::My>();
+    // ^ this description can be used in compile-time functions!
+    constexpr auto a = desc.get<0>();
+    constexpr auto b = desc.get<1>(); //these are in the same order as in DESCRIBE()
+    constexpr auto c = desc.get<2>();
+    constexpr auto d = desc.get<3>();
+    static_assert(desc.fields_count == 4);
+    static_assert(desc.cls_name == "My");
+    static_assert(desc.ns_name == "a");
+
+    static_assert(a.name == "a");
+    obj.*a.value = 33; // write value
+    static_assert(a.meta == "_");
+
+    static_assert(b.name == "b");
+    static_assert(b.meta == "optional");
+
+    static_assert(c.name == "c");
+    static_assert(c.meta == "one_of(foo|bar|baz)");
+    using c_type = decltype(of(c)); // ADL-powered helper to get type of field;
+    static_assert(std::is_same_v<c_type, std::string>);
+    c_type current_value = obj.*c.value;
+
+    static_assert(d.name == "d");
+    static_assert(d.meta == "in_range(0 < x < 15)");
+}
