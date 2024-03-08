@@ -35,9 +35,10 @@ struct pack_elem<0, T, Ts...> {
     using type = T;
 };
 
-constexpr std::string_view get_next_stripped(std::string_view& src) {
+constexpr void get_next_stripped(std::string_view& src, std::string_view* meta, std::string_view* name) {
     auto nextComma = src.find_first_of(',');
     auto result = src.substr(0, nextComma);
+    auto initial = result;
     src = src.substr(nextComma+1);
     if (auto pref = result.find_first_not_of(' '); pref != std::string_view::npos) {
         result = result.substr(pref);
@@ -48,8 +49,13 @@ constexpr std::string_view get_next_stripped(std::string_view& src) {
     if (auto suff = result.find_last_not_of(' '); suff != std::string_view::npos) {
         result = result.substr(0, suff+1);
     }
-    // todo: assert every field has name (and attrs?)
-    return result;
+    if (name) {
+        *name = result;
+    }
+    auto diff = initial.size() - result.size();
+    if (diff && meta) {
+        *meta = initial.substr(0, diff - 2); // (meta(::))name
+    }
 }
 
 template <class C, typename T>
@@ -72,6 +78,7 @@ template<auto field>
 struct Field
 {
     std::string_view name;
+    std::string_view meta;
     static constexpr auto value = field;
     static constexpr auto is_method = std::is_member_function_pointer_v<decltype(field)>;
     using type = std::decay_t<decltype(detail::get_memptr_type(field))>;
@@ -121,18 +128,14 @@ constexpr auto Describe(std::string_view clsname, std::string_view names) {
     static_assert((std::is_member_pointer_v<decltype(fields)> && ...),
                   "DESCRIBE() must be used with &Class::members only");
     Result result = {};
-    result.cls_name = detail::get_next_stripped(clsname);
-    auto diff = clsname.size() - result.cls_name.size();
-    if (diff) {
-        result.ns_name = clsname.substr(0, diff - 2); // (abs(::))cls_name
-    }
+    detail::get_next_stripped(clsname, &result.ns_name, &result.cls_name);
     using cls = typename decltype(result)::cls;
     do_for<AllCount>([&](auto i) mutable {
         auto& field = result.template get<i()>();
         using currect_cls = typename std::decay_t<decltype(field)>::cls;
         static_assert(std::is_same_v<cls, currect_cls>,
                       "All fields must be From the same Type");
-        field.name = detail::get_next_stripped(names);
+        detail::get_next_stripped(names, &field.meta, &field.name);
     });
     return result;
 }
