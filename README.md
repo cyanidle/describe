@@ -39,6 +39,9 @@ print_fields(Data{1, 2}); // -> "a: 1, b: 2, "
 * static constexpr methods_count
 * static constexpr all_count
 * constexpr get<idx>() -> Field
+* for_each_field([](auto field){...})
+* for_each_method([](auto method){...})
+* for_each([](auto field/method){...})
 
 # Field
 * name
