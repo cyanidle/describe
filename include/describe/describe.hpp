@@ -94,6 +94,8 @@ struct Field
     using cls = std::decay_t<decltype(detail::get_memptr_class(field))>;
 };
 
+template<typename Field> auto of(Field f) -> typename decltype(f)::type;
+
 template<typename Head, typename...Fields>
 struct Description : protected Head, Fields...
 {

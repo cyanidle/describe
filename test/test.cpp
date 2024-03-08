@@ -13,36 +13,43 @@ static MetaPair next(std::string_view& src) {
 }
 namespace a {
 
-#define optional _
+#define attrs(...) &_
 
 struct Lol {
     int a, b;
+    Lol* c;
 };
-DESCRIBE(a::Lol, &_::a, &optional::b)
+DESCRIBE(a::Lol, &_::a, attrs(bar|baz)::b, attrs(x > 123)::c)
 
 }
 
 
 TEST_CASE("describe") {
     SUBCASE("get_next_stripped") {
-        std::string_view body = "&_::f,       &optional::m";
+        std::string_view body = "&_::f,       &optional::m,attrs(bar|baz)::c";
         auto f = next(body);
         auto m = next(body);
+        auto c = next(body);
         CHECK(f.meta == "_");
         CHECK(f.name == "f");
         CHECK(m.meta == "optional");
         CHECK(m.name == "m");
+        CHECK(c.meta == "attrs(bar|baz)");
+        CHECK(c.name == "c");
     }
     SUBCASE("macro") {
         auto desc = describe::Get<a::Lol>();
         auto a = desc.get<0>();
         auto b = desc.get<1>();
+        auto c = desc.get<2>();
         CHECK(desc.cls_name == "Lol");
         CHECK(desc.ns_name == "a");
         CHECK(a.name == "a");
         CHECK(a.meta == "_");
         CHECK(b.name == "b");
-        CHECK(b.meta == "optional");
+        CHECK(b.meta == "attrs(bar|baz)");
+        CHECK(c.name == "c");
+        CHECK(c.meta == "attrs(x > 123)");
     }
 }
 

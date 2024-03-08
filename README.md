@@ -1,7 +1,6 @@
 # describe
 Minimal C++ Reflection Library
 
-
 # Usage
 
 ```cpp
@@ -33,6 +32,26 @@ print_fields(Data{1, 2}); // -> "a: 1, b: 2, "
 
 ```
 
+# Description
+* cls_name
+* ns_name
+* static constexpr fields_count
+* static constexpr methods_count
+* static constexpr all_count
+* constexpr get<idx>() -> Field
+
+# Field
+* name
+* meta
+* static constexpr value -> member pointer
+* static constexpr is_method
+* using type -> T of value
+* using cls -> class of field
+
+# Field (method) is same but
+* using type -> signature
+* static constexpr value -> member function pointer
+
 # Advanced
 
 It is possible to describe namespaces for classes AND meta info for fields/methods
@@ -42,42 +61,50 @@ namespace a {
 
 // defining a meta-info tag for fields
 #define optional _
+// you can put anything before field it just must expand to &_ in the end
+#define one_of(...) &_
+#define in_range(...) &_
 
 struct My {
     int a, b;
+    std::string c;
+    float d;
 };
 
 // inside this macro '_' is actually an alias to a::My
-DESCRIBE(a::My, &_::a, &optional::b)
+DESCRIBE(a::My, &_::a, &optional::b, one_of(foo|bar|baz)::c, in_range(0 < x < 15)::d)
 //       ^ namespace        ^ everything is captured Literally (without macro expansion)
 //                     ^ '&' and '::' are discarded
 
-}
+// NOTE: ::<field_name> is required!
+// Fields are separated based on commas! do not put commas inside meta data!
 
-template<typename T>
-void print() {  
-    describe::Get<T>().for_each_field([](auto f){
-        if constexpr (f.meta == "optional") {   
-            std::cout << "optional:";
-        }
-        std::cout << f.name << ", ";
-    });
 }
 
 void test() {
+    a::My obj;
     constexpr auto desc = describe::Get<a::My>();
     // ^ this description can be used in compile-time functions!
-    auto a = desc.get<0>();
-    auto b = desc.get<1>(); //these are in the same order as in DESCRIBE()
+    constexpr auto a = desc.get<0>();
+    constexpr auto b = desc.get<1>(); //these are in the same order as in DESCRIBE()
+    constexpr auto c = desc.get<2>();
+    constexpr auto d = desc.get<3>();
     desc.cls_name == "My"; // true
     desc.ns_name == "a"; // true
     
     a.name == "a"; // true
+    obj.*a.value = 33; // write value
     a.meta == "_"; // true
     
     b.name == "b"; // true
     b.meta == "optional"; // true
     
-    print<a::T>(); // a, optional:b, 
+    c.name == "c";
+    c.meta == "one_of(foo|bar|baz)";
+    using c_type = decltype(of(c)); // ADL-powered helper to get type of field;
+    c_type current_value = obj.*c.value;
+    
+    d.name == "d";
+    d.meta == "in_range(0 < x < 15)";
 }
 ```
