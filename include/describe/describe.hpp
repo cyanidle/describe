@@ -67,6 +67,7 @@ constexpr void get_next_stripped(std::string_view& src, std::string_view* meta, 
     }
 }
 
+// TODO: Fix get_memptr_type for T[N]
 template <class C, typename T>
 T get_memptr_type(T C::*);
 template <class C, typename T>

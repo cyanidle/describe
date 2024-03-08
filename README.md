@@ -113,4 +113,28 @@ TEST_CASE("example") {
     static_assert(d.name == "d");
     static_assert(d.meta == "in_range(0 < x < 15)");
 }
+
+// Templates and privates work too!
+
+template<typename T>
+struct A {
+    T data;
+};
+
+template<typename T>
+DESCRIBE(A<T>, &_::data)
+
+constexpr auto templ_data = describe::Get<A<int>>().get<0>();
+static_assert(templ_data.name == "data");
+static_assert(std::is_same_v<int, decltype(of(templ_data))>);
+
+struct B {
+    friend DESCRIBE(B, &_::priv_data)
+private:
+    int priv_data;
+};
+
+
+constexpr auto priv_data = describe::Get<B>().get<0>();
+static_assert(priv_data.name == "priv_data");
 ```
