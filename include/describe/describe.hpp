@@ -92,6 +92,9 @@ struct Field
     static constexpr auto is_method = std::is_member_function_pointer_v<decltype(field)>;
     using type = std::decay_t<decltype(detail::get_memptr_type(field))>;
     using cls = std::decay_t<decltype(detail::get_memptr_class(field))>;
+    template<typename T> constexpr auto&& get(T&& obj) const noexcept {
+        return std::forward<T>(obj).*value;
+    }
 };
 
 template<typename Field> auto of(Field f) -> typename decltype(f)::type;
@@ -105,8 +108,8 @@ struct Description : protected Head, Fields...
     static constexpr auto methods_count = detail::count<true, Head, Fields...>();
     static constexpr auto all_count = fields_count + methods_count;
     template<size_t idx> using field_elem_t = typename detail::pack_elem<idx, Head, Fields...>::type;
-    template<size_t idx> constexpr const auto& get() const {return static_cast<const field_elem_t<idx>&>(*this); }
-    template<size_t idx> constexpr auto& get() {return static_cast<field_elem_t<idx>&>(*this); }
+    template<size_t idx> constexpr const auto& get() const noexcept {return static_cast<const field_elem_t<idx>&>(*this); }
+    template<size_t idx> constexpr auto& get() noexcept {return static_cast<field_elem_t<idx>&>(*this); }
     using cls = typename Head::cls;
     template<typename F> constexpr void for_each_field(F&& f) const {
         do_for<all_count>([&](auto i){

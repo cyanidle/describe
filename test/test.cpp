@@ -94,6 +94,7 @@ TEST_CASE("example") {
 
     static_assert(a.name == "a");
     obj.*a.value = 33; // write value
+    a.get(obj) = 42; // alternative syntax to read/write
     static_assert(a.meta == "_");
 
     static_assert(b.name == "b");
