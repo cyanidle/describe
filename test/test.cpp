@@ -69,10 +69,10 @@ struct My {
 
 // inside this macro '_' is actually an alias to a::My
 DESCRIBE(a::My, &_::a, &optional::b, one_of(foo|bar|baz)::c, in_range(0 < x < 15)::d)
-//       ^ namespace        ^ everything is captured Literally (without macro expansion)
+//       ^ must write namespace        ^ everything is captured Literally (without macro expansion)
 //                     ^ '&' and '::' are discarded
 
-// NOTE: ::<field_name> is required!
+// NOTE: '::' is required before field name!
 // Fields are separated based on commas! do not put commas inside meta data!
 
 }
