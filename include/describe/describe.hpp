@@ -45,7 +45,7 @@ constexpr void parse_one(sv& src, sv& meta, sv& name, bool isCls = false) {
     if (sepPos != sv::npos) {
         meta = src.substr(metaBegin, sepPos - metaBegin);
     }
-    name = src.substr(nameBegin, nameEnd - nameBegin + 1);
+    name = src.substr(nameBegin, nameEnd == sv::npos ? sv::npos : nameEnd - nameBegin + 1);
     if(comma != sv::npos) {
         src = src.substr(comma + 1);
     }
@@ -140,10 +140,10 @@ inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ = cls; \
     return ::describe::Describe<_, ##__VA_ARGS__>(#cls, #__VA_ARGS__); \
 }
 
-#define DESCRIBE_HEAD(...) \
+#define DESCRIBE_CLASS(...) \
 inline constexpr auto GetDescription(::describe::Tag<__VA_ARGS__>) { \
 using _ = __VA_ARGS__; constexpr std::string_view _clsName = #__VA_ARGS__;
-#define DESCRIBE_BODY(...) \
+#define DESCRIBE_FIELDS(...) \
 return ::describe::Describe<_, ##__VA_ARGS__>(_clsName, #__VA_ARGS__); }
 
 } //desc

@@ -92,6 +92,7 @@ void example() {
     static_assert(d.meta == "in_range(0 < x < 15)");
 }
 
+
 //// Templates and privates work too!
 namespace test::templates {
 
@@ -113,24 +114,23 @@ template<typename T, int i>
 struct B {
     T data;
 };
+
+// 'Full' version, allows commas in class name
 template<typename T, int i>
-DESCRIBE_HEAD(templates::B<T, i>)
-DESCRIBE_BODY(&_::data)
+DESCRIBE_CLASS(test::templates::B<T, i>)
+DESCRIBE_FIELDS(&_::data)
 
 constexpr auto templ = describe::Get<B<int, 1>>();
 static_assert(templ.name == "B<T, i>");
-static_assert(templ.meta == "templates");
+static_assert(templ.meta == "test::templates");
 constexpr auto templ_data = templ.get<0>();
 static_assert(templ_data.name == "data");
-static_assert(templ_data.meta == "_");
 static_assert(std::is_same_v<int, decltype(templ_data)::type>);
 }
 
 namespace test::privates {
 
-struct B {
-
-private:
+class B {
     ALLOW_DESCRIBE_FOR(B);
     int priv_data;
 };
@@ -139,6 +139,20 @@ DESCRIBE(B, &_::priv_data)
 
 constexpr auto priv_data = describe::Get<B>().get<0>();
 static_assert(priv_data.name == "priv_data");
+
+}
+
+namespace test::friends {
+
+template<typename T>
+struct Shy {
+    friend DESCRIBE(Shy);
+    // friend declaration does not require template args
+};
+
+constexpr auto desc = describe::Get<Shy<double>>();
+static_assert(desc.name == "Shy");
+static_assert(desc.fields_count == 0);
 
 }
 ```

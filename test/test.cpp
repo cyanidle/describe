@@ -54,8 +54,10 @@ void example() {
     a::My obj;
     constexpr auto desc = describe::Get<a::My>();
     // ^ this description can be used in compile-time functions!
-    constexpr auto a = desc.get<0>();
+    static_assert(desc.name == "My");
+    static_assert(desc.meta == "a");
 
+    constexpr auto a = desc.get<0>();
     static_assert(std::is_same_v<decltype(a), const describe::Field<&a::My::a>>);
 
     constexpr auto b = desc.get<1>(); //these are in the same order as in DESCRIBE()
@@ -103,9 +105,11 @@ template<typename T, int i>
 struct B {
     T data;
 };
+
+// 'Full' version, allows commas in class name
 template<typename T, int i>
-DESCRIBE_HEAD(test::templates::B<T, i>)
-DESCRIBE_BODY(&_::data)
+DESCRIBE_CLASS(test::templates::B<T, i>)
+DESCRIBE_FIELDS(&_::data)
 
 constexpr auto templ = describe::Get<B<int, 1>>();
 static_assert(templ.name == "B<T, i>");
@@ -126,6 +130,20 @@ DESCRIBE(B, &_::priv_data)
 
 constexpr auto priv_data = describe::Get<B>().get<0>();
 static_assert(priv_data.name == "priv_data");
+
+}
+
+namespace test::friends {
+
+template<typename T>
+struct Shy {
+    friend DESCRIBE(Shy);
+    // friend declaration does not require template args
+};
+
+constexpr auto desc = describe::Get<Shy<double>>();
+static_assert(desc.name == "Shy");
+static_assert(desc.fields_count == 0);
 
 }
 
