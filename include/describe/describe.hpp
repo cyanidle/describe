@@ -134,11 +134,17 @@ constexpr auto Describe(std::string_view clsname, std::string_view names) {
 
 #define ALLOW_DESCRIBE_FOR(cls) \
     friend constexpr auto GetDescription(::describe::Tag<cls>);
+
 #define DESCRIBE(cls, ...) \
 inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ = cls; \
     return ::describe::Describe<_, ##__VA_ARGS__>(#cls, #__VA_ARGS__); \
 }
-#define TEMPL(cls, ...) cls<__VA_ARGS__>
+
+#define DESCRIBE_HEAD(...) \
+inline constexpr auto GetDescription(::describe::Tag<__VA_ARGS__>) { \
+using _ = __VA_ARGS__; constexpr std::string_view _clsName = #__VA_ARGS__;
+#define DESCRIBE_BODY(...) \
+return ::describe::Describe<_, ##__VA_ARGS__>(_clsName, #__VA_ARGS__); }
 
 } //desc
 
