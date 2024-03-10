@@ -1,5 +1,5 @@
 # describe
-Minimal C++ Reflection Library in just ~160 LOC
+Minimal C++ Reflection Library in just ~150 LOC
 
 # Usage
 
