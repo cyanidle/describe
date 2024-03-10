@@ -86,11 +86,8 @@ void example() {
 
     static_assert(c.name == "c");
     static_assert(c.meta == "one_of(foo|bar|baz)");
-    using c_type = describe::value_of_t<decltype(c)>;
-    static_assert(std::is_same_v<c_type, std::string>);
-    using owner_type = describe::class_of_t<decltype(c)>;
-    static_assert(std::is_same_v<owner_type, a::My>);
-    c_type current_value = obj.*c.value;
+    static_assert(std::is_same_v<decltype(c)::type, std::string>);
+    static_assert(std::is_same_v<decltype(c)::cls, a::My>);
 
     static_assert(d.name == "d");
     static_assert(d.meta == "in_range(0 < x < 15)");
@@ -110,7 +107,7 @@ DESCRIBE(A<T>, &_::data)
 constexpr auto arr_data = describe::Get<A<int>>().get<0>();
 // shorthand wont work for arrays(
 // static_assert(std::is_same_v<int[10], decltype(of_value(arr_data))>);
-static_assert(std::is_same_v<int[10], typename decltype(arr_data)::type>);
+static_assert(std::is_same_v<int[10], decltype(arr_data)::type>);
 
 // mutli-arg and non-type params template
 template<typename T, int i>
@@ -127,12 +124,14 @@ static_assert(templ.meta == "templates");
 constexpr auto templ_data = templ.get<0>();
 static_assert(templ_data.name == "data");
 static_assert(templ_data.meta == "_");
-static_assert(std::is_same_v<int, describe::value_of_t<decltype(templ_data)>>);
+static_assert(std::is_same_v<int, decltype(templ_data)::type>);
 }
 
 namespace test::privates {
 
-class B {
+struct B {
+
+private:
     ALLOW_DESCRIBE_FOR(B);
     int priv_data;
 };
