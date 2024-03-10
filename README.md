@@ -23,10 +23,7 @@ static_assert(desc.methods_count == 1);
 
 void print_fields(const Data& d) {
     desc.for_each_field([&](auto f) {
-        using type = typename decltype(f)::type;
-        std::cout << f.name << ": "
-                  << d.*f.value
-                  << ", ";
+        std::cout << f.name << ": " << f.get(d) << ", ";
     });
 }
 
