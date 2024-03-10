@@ -118,13 +118,15 @@ struct B {
     T data;
 };
 template<typename T, int i>
-DESCRIBE(templates::TEMPL(B, T, i), &_::data)
+DESCRIBE_HEAD(templates::B<T, i>)
+DESCRIBE_BODY(&_::data)
 
 constexpr auto templ = describe::Get<B<int, 1>>();
-static_assert(templ.name == "TEMPL(B, T, i)");
+static_assert(templ.name == "B<T, i>");
 static_assert(templ.meta == "templates");
 constexpr auto templ_data = templ.get<0>();
 static_assert(templ_data.name == "data");
+static_assert(templ_data.meta == "_");
 static_assert(std::is_same_v<int, describe::value_of_t<decltype(templ_data)>>);
 }
 
