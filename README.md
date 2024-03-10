@@ -91,9 +91,9 @@ void example() {
     static_assert(d.name == "d");
     static_assert(d.meta == "in_range(0 < x < 15)");
 }
-
-
-//// Templates and privates work too!
+```
+# Templates
+```cpp
 namespace test::templates {
 
 template<typename T>
@@ -127,7 +127,9 @@ constexpr auto templ_data = templ.get<0>();
 static_assert(templ_data.name == "data");
 static_assert(std::is_same_v<int, decltype(templ_data)::type>);
 }
-
+```
+# Private fields
+```cpp
 namespace test::privates {
 
 class B {
