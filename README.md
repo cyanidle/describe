@@ -56,8 +56,7 @@ DESCRIBE(a::My, &_::a, &optional::b, one_of(foo|bar|baz)::c, in_range(0 < x < 15
 //       ^ must write namespace        ^ everything is captured Literally (without macro expansion)
 //                     ^ '&' and '::' are discarded
 
-// NOTE: '::' is required before field name!
-// Fields are separated based on commas! do not put commas inside meta data!
+// NOTE: '::' is required before each field and is used for parsing: do not put '::' inside meta data!
 
 }
 
