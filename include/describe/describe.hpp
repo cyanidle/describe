@@ -79,9 +79,6 @@ struct Field
     }
 };
 
-template<typename Field> auto of(Field f) -> typename decltype(f)::type;
-template<typename Field> auto class_of(Field f) -> typename decltype(f)::cls;
-
 template<typename Cls, typename...Fields>
 struct Description : protected Fields...
 {
@@ -128,7 +125,8 @@ constexpr auto Describe(std::string_view clsname, std::string_view names) {
     detail::parse_one(clsname, result.meta, result.name, true);
     do_for<sizeof...(fields)>([&](auto i) {
         auto& field = result.template get<i()>();
-        static_assert(std::is_same_v<Cls, decltype(class_of(field))>, "All fields must be From the same Type");
+        static_assert(std::is_same_v<Cls, typename std::decay_t<decltype(field)>::cls>,
+                      "All fields must be From the same Type");
         detail::parse_one(names, field.meta, field.name);
     });
     return result;

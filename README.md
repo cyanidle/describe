@@ -86,9 +86,9 @@ void example() {
 
     static_assert(c.name == "c");
     static_assert(c.meta == "one_of(foo|bar|baz)");
-    using c_type = decltype(of(c)); // ADL-powered helper to get type of field;
+    using c_type = describe::value_of_t<decltype(c)>;
     static_assert(std::is_same_v<c_type, std::string>);
-    using owner_type = decltype(class_of(c));
+    using owner_type = describe::class_of_t<decltype(c)>;
     static_assert(std::is_same_v<owner_type, a::My>);
     c_type current_value = obj.*c.value;
 
@@ -96,27 +96,49 @@ void example() {
     static_assert(d.meta == "in_range(0 < x < 15)");
 }
 
-// Templates and privates work too!
+//// Templates and privates work too!
+namespace test::templates {
 
 template<typename T>
 struct A {
-    T data;
+    T data[10];
 };
-
 template<typename T>
 DESCRIBE(A<T>, &_::data)
 
-constexpr auto templ_data = describe::Get<A<int>>().get<0>();
-static_assert(templ_data.name == "data");
-static_assert(std::is_same_v<int, decltype(of(templ_data))>);
+// arrays as fields
+constexpr auto arr_data = describe::Get<A<int>>().get<0>();
+// shorthand wont work for arrays(
+// static_assert(std::is_same_v<int[10], decltype(of_value(arr_data))>);
+static_assert(std::is_same_v<int[10], typename decltype(arr_data)::type>);
 
+// mutli-arg and non-type params template
+template<typename T, int i>
 struct B {
-    friend DESCRIBE(B, &_::priv_data)
-private:
+    T data;
+};
+template<typename T, int i>
+DESCRIBE(templates::TEMPL(B, T, i), &_::data)
+
+constexpr auto templ = describe::Get<B<int, 1>>();
+static_assert(templ.name == "TEMPL(B, T, i)");
+static_assert(templ.meta == "templates");
+constexpr auto templ_data = templ.get<0>();
+static_assert(templ_data.name == "data");
+static_assert(std::is_same_v<int, describe::value_of_t<decltype(templ_data)>>);
+}
+
+namespace test::privates {
+
+class B {
+    ALLOW_DESCRIBE_FOR(B);
     int priv_data;
 };
 
+DESCRIBE(B, &_::priv_data)
 
 constexpr auto priv_data = describe::Get<B>().get<0>();
 static_assert(priv_data.name == "priv_data");
+
+}
 ```
