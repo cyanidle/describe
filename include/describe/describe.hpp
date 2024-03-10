@@ -37,7 +37,7 @@ struct pack_elem<0, T, Ts...> {
 using sv = std::string_view;
 // &optional::ba  , regex((foo|bar|baz), 123)::c,
 constexpr void parse_one(sv& src, sv& meta, sv& name, bool isCls = false) {
-    auto sepPos = src.find("::");
+    auto sepPos = isCls ? src.rfind("::") : src.find("::");
     auto comma = src.find_first_of(',', sepPos);
     auto nameBegin = sepPos != sv::npos ? sepPos + 2 : 0;
     auto nameEnd = isCls ? sv::npos : src.find_last_not_of(" \n\r\t", comma - 1);
