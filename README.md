@@ -16,6 +16,7 @@ struct Data {
     }
 };
 
+// Inside macro a '_' alias is defined for 'Data'
 DESCRIBE(Data, &_::a, &_::b, &_::method)
 
 constexpr auto desc = describe::Get<Data>();
