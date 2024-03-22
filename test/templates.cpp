@@ -35,8 +35,3 @@ DESCRIBE_FIELDS(&_::as_int)
 constexpr auto sum_desc = describe::Get<sum<1, 2>>();
 static_assert(sum_desc.name == "sum<a, b>");
 static_assert(sum_desc.ns == "");
-
-
-int main(int argc, char *argv[]) {
-    return 0;
-}

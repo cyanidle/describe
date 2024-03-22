@@ -45,7 +45,3 @@ constexpr auto b = describe::Get<Data>().get<0>();
 using all_b = describe::get_attrs_t<decltype(a)>;
 static_assert(std::is_same_v<all, all_a>);
 
-int main(int argc, char *argv[])
-{
-    return 0;
-}

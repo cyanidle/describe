@@ -14,9 +14,3 @@ class MoreShy {
 public:
     friend DESCRIBE(MoreShy, &_::a);
 };
-
-int main(int argc, char *argv[])
-{
-
-    return 0;
-}
