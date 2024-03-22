@@ -126,6 +126,8 @@ DESCRIBE(test::Data<T>, &_::a, &_::b)
 constexpr auto desc = describe::Get<test::Data<int>>();
 static_assert(desc.name == "Data<T>");
 static_assert(desc.ns == "test");
+constexpr auto B = desc.get<1>();
+static_assert(std::is_same_v<decltype(B)::type, int[10]>);
 
 
 template<auto a, auto b> struct sum {
@@ -142,6 +144,10 @@ DESCRIBE_FIELDS(&_::as_int)
 constexpr auto sum_desc = describe::Get<sum<1, 2>>();
 static_assert(sum_desc.name == "sum<a, b>");
 static_assert(sum_desc.ns == "");
+
+int main(int argc, char *argv[]) {
+    return 0;
+}
 
 ```
 
