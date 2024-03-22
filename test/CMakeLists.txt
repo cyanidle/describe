@@ -1,2 +1,0 @@
-add_executable(describe_test test.cpp)
-target_link_libraries(describe_test PRIVATE describe)

@@ -1,10 +1,12 @@
 # describe
-Minimal C++ Reflection Library in just ~150 LOC
+Minimal C++17 Reflection Library in less than 250 LOC. 
 
 # Usage
 
+## Basic
 ```cpp
-#include<describe/describe.hpp>
+#include <describe/describe.hpp>
+#include <iostream>
 
 struct Data {
     int a;
@@ -27,131 +29,139 @@ void print_fields(const Data& d) {
     });
 }
 
-print_fields(Data{1, 2}); // -> a: 1, b: 2, 
-```
-# Advanced
-
-It is possible to describe namespaces for classes AND meta info for fields/methods
-
-```cpp
-namespace a {
-
-// defining a meta-info tag for fields
-#define optional _
-// you can put anything before field it just must expand to &_ in the end
-#define one_of(...) &_
-#define in_range(...) &_
-
-struct My {
-    int a, b;
-    std::string c;
-    float d;
-};
-
-// inside this macro '_' is actually an alias to a::My
-DESCRIBE(a::My, &_::a, &optional::b, one_of(foo|bar|baz)::c, in_range(0 < x < 15)::d)
-//       ^ must write namespace        ^ everything is captured Literally (without macro expansion)
-//                     ^ '&' and '::' are discarded
-
-// NOTE: '::' is required before each field and is used for parsing: do not put '::' inside meta data!
-
+void test_print() {
+    print_fields(Data{1, 2}); // -> a: 1, b: 2,
 }
 
-void example() {
-    a::My obj;
-    constexpr auto desc = describe::Get<a::My>();
-    // ^ this description can be used in compile-time functions!
-    constexpr auto a = desc.get<0>();
+enum Enum {foo, bar, baz,};
+DESCRIBE(Enum, foo, bar, baz) // _:: can be omited
 
-    static_assert(std::is_same_v<decltype(a), const describe::Field<&a::My::a>>);
-
-    constexpr auto b = desc.get<1>(); //these are in the same order as in DESCRIBE()
-    constexpr auto c = desc.get<2>();
-    constexpr auto d = desc.get<3>();
-    static_assert(desc.fields_count == 4);
-    static_assert(desc.name == "My");
-    static_assert(desc.meta == "a");
-
-    static_assert(a.name == "a");
-    obj.*a.value = 33; // write value
-    a.get(obj) = 42; // alternative syntax to read/write
-    static_assert(a.meta == "_");
-
-    static_assert(b.name == "b");
-    static_assert(b.meta == "optional");
-
-    static_assert(c.name == "c");
-    static_assert(c.meta == "one_of(foo|bar|baz)");
-    static_assert(std::is_same_v<decltype(c)::type, std::string>);
-    static_assert(std::is_same_v<decltype(c)::cls, a::My>);
-
-    static_assert(d.name == "d");
-    static_assert(d.meta == "in_range(0 < x < 15)");
-}
-```
-# Templates
-```cpp
-namespace test::templates {
+enum class ClEnum {bim, bam, bom,};
+DESCRIBE(ClEnum, _::bim, _::bam, _::bom) // enum classes are supported
 
 template<typename T>
-struct A {
-    T data[10];
-};
-template<typename T>
-DESCRIBE(A<T>, &_::data)
+void print_enum() {
+    describe::Get<T>().for_each_field([&](auto f) {
+        using underlying = std::underlying_type_t<typename decltype(f)::type>;
+        std::cout << f.name << ": " << underlying(f.value) << ", ";
+    });
+}
 
-// arrays as fields
-constexpr auto arr_data = describe::Get<A<int>>().get<0>();
-// shorthand wont work for arrays(
-// static_assert(std::is_same_v<int[10], decltype(of_value(arr_data))>);
-static_assert(std::is_same_v<int[10], decltype(arr_data)::type>);
-
-// mutli-arg and non-type params template
-template<typename T, int i>
-struct B {
-    T data;
-};
-
-// 'Full' version, allows commas in class name
-template<typename T, int i>
-DESCRIBE_CLASS(test::templates::B<T, i>)
-DESCRIBE_FIELDS(&_::data)
-
-constexpr auto templ = describe::Get<B<int, 1>>();
-static_assert(templ.name == "B<T, i>");
-static_assert(templ.meta == "test::templates");
-constexpr auto templ_data = templ.get<0>();
-static_assert(templ_data.name == "data");
-static_assert(std::is_same_v<int, decltype(templ_data)::type>);
+void test() {
+    print_enum<Enum>(); //-> foo: 0, bar: 1, baz: 2
+    print_enum<ClEnum>(); //-> bim: 0, bam: 1, bom: 2
 }
 ```
-# Private fields
-```cpp
-namespace test::privates {
 
-class B {
-    ALLOW_DESCRIBE_FOR(B);
-    int priv_data;
+## Attributes
+
+```cpp
+#include <describe/describe.hpp>
+#include <string>
+
+struct BIG {};
+struct small {};
+struct validator {};
+
+template<int min, int max>
+struct in_range : validator {
+    bool check(int value) {
+        return min < value && value < max;
+    }
 };
 
-DESCRIBE(B, &_::priv_data)
+struct Data {
+    std::string name;
+    int value;
+};
 
-constexpr auto priv_data = describe::Get<B>().get<0>();
-static_assert(priv_data.name == "priv_data");
+DESCRIBE_ATTRS(Data, BIG, in_range<0, 7>)
+DESCRIBE(Data, &_::name, &_::value)
 
-}
+using missing = describe::extract_attr_t<small, Data>;
+static_assert(std::is_same_v<missing, void>);
 
-namespace test::friends {
+using found = describe::extract_attr_t<BIG, Data>;
+static_assert(std::is_same_v<found, BIG>);
+
+// attr is considered found if it is a subclass!
+using object_check = describe::extract_attr_t<validator, Data>;
+static_assert(std::is_same_v<object_check, in_range<0, 7>>);
+
+using all = describe::get_attrs_t<Data>;
+static_assert(std::is_same_v<all, describe::Attrs<BIG, in_range<0, 7>>>);
+
+// Fields inherit attributes from class
+constexpr auto a = describe::Get<Data>().get<0>();
+using all_a = describe::get_attrs_t<decltype(a)>;
+static_assert(std::is_same_v<all, all_a>);
+
+// Unless specified for field individually
+struct custom {};
+
+constexpr auto b = describe::Get<Data>().get<0>();
+using all_b = describe::get_attrs_t<decltype(a)>;
+static_assert(std::is_same_v<all, all_a>);
+
+```
+
+## Templates
+```cpp
+#include <describe/describe.hpp>
+
+namespace test {
 
 template<typename T>
-struct Shy {
-    friend DESCRIBE(Shy);
-    // friend declaration does not require template args
+struct Data {
+    T a;
+    T b[10];
 };
 
-constexpr auto desc = describe::Get<Shy<double>>();
-static_assert(desc.name == "Shy");
-static_assert(desc.fields_count == 0);
+// all macros work just fine. you just must define template<> above them
+template<typename T>
+DESCRIBE(test::Data<T>, &_::a, &_::b)
 
 }
+
+constexpr auto desc = describe::Get<test::Data<int>>();
+static_assert(desc.name == "Data<T>");
+static_assert(desc.ns == "test");
+
+
+template<auto a, auto b> struct sum {
+    static constexpr auto value = a + b;
+    int as_int = int(value);
+};
+
+// DESCRIBE_CLASS(...) DESCRIBE_FIELDS(...) pair for multi-param templates
+template<auto a, auto b>
+DESCRIBE_CLASS(sum<a, b>)
+DESCRIBE_FIELDS(&_::as_int)
+
+
+constexpr auto sum_desc = describe::Get<sum<1, 2>>();
+static_assert(sum_desc.name == "sum<a, b>");
+static_assert(sum_desc.ns == "");
+
+```
+
+## Private fields
+```cpp
+#include <describe/describe.hpp>
+
+class Shy {
+public:
+    ALLOW_DESCRIBE_FOR(Shy)
+private:
+    int a;
+};
+
+DESCRIBE(Shy, &_::a)
+
+class MoreShy {
+    int a;
+public:
+    friend DESCRIBE(MoreShy, &_::a);
+};
+
 ```
