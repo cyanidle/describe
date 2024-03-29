@@ -1,5 +1,12 @@
 # describe
-Minimal C++17 Reflection Library in less than 250 LOC. 
+Minimal C++17 Reflection Library in 300 LOC. 
+
+# Features
+* Constexpr field pointer + name iteration
+* Enums support
+* Templates support
+* Friend support
+* Constexpr non-invasive attributes for classes (per-field customizable)
 
 # Usage
 

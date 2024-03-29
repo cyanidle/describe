@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <string_view>
 #include <type_traits>
+#include <utility>
+#include <array>
 namespace describe
 {
 
@@ -64,13 +66,13 @@ struct has_GetAttrs : std::false_type {};
 
 template<typename C>
 struct has_GetAttrs<C, std::void_t<
-                           decltype(GetAttrs(Tag<C>{}))
-                           >>: std::true_type {};
+    decltype(GetAttrs(Tag<C>{}))
+>>: std::true_type {};
 
 template<auto field>
 struct has_GetAttrs<Field<field>, std::void_t<
-                                      decltype(GetAttrs(Tag<typename Field<field>::cls>{}, Field<field>{}))
-                                      >>: std::true_type {}; // without Tag<Cls> as first arg ADL does not work!
+    decltype(GetAttrs(Tag<typename Field<field>::cls>{}, Field<field>{}))
+>>: std::true_type {}; // without Tag<Cls> as first arg ADL does not work!
 
 template<typename T>
 auto get_attr(Attrs<>) -> Tag<void> {return {};}
@@ -179,15 +181,16 @@ struct is_described : std::false_type {};
 
 template<typename T>
 struct is_described<T,
-                    std::void_t<decltype(GetDescription(Tag<T>{}))
-                                >>: std::true_type {};
+    std::void_t<decltype(GetDescription(Tag<T>{}))
+>>: std::true_type {};
 
 template<typename T>
 constexpr auto is_described_v = is_described<T>::value;
 
 template<typename T> constexpr auto Get() {
     static_assert(is_described_v<T>, "Please use DESCRIBE() macro");
-    return GetDescription(Tag<T>{});
+    constexpr auto res = GetDescription(Tag<T>{});
+    return res;
 }
 
 template<typename Cls, auto...fields>
@@ -221,13 +224,13 @@ friend constexpr auto GetDescription(::describe::Tag<cls>);
 
 #define DESCRIBE(cls, ...) \
 inline constexpr auto GetDescription(::describe::Tag<cls>) { \
-        using _ = cls; \
-        return ::describe::det::descHelper<_>::template Describe<__VA_ARGS__>(#cls, #__VA_ARGS__); \
+    using _ = cls; \
+    return ::describe::det::descHelper<_>::template Describe<__VA_ARGS__>(#cls, #__VA_ARGS__); \
 }
 
 #define DESCRIBE_ATTRS(cls, ...) \
 inline constexpr auto GetAttrs(::describe::Tag<cls>) { \
-        return ::describe::Attrs<__VA_ARGS__>{}; \
+    return ::describe::Attrs<__VA_ARGS__>{}; \
 }
 
 
@@ -241,6 +244,46 @@ inline constexpr auto GetDescription(::describe::Tag<__VA_ARGS__>) { \
 
 #define DESCRIBE_FIELDS(...) \
     return ::describe::det::descHelper<_>::template Describe<__VA_ARGS__>(_clsName, #__VA_ARGS__); }
+
+// Utils
+template<typename T>
+constexpr auto field_names() {
+    constexpr auto desc = describe::Get<T>();
+    std::array<std::string_view, desc.fields_count> result;
+    size_t idx = 0;
+    desc.for_each_field([&](auto f){
+        result[idx++] = f.name;
+    });
+    return result;
+}
+
+template<typename Enum>
+constexpr bool enum_to_name(Enum value, std::string_view& out) {
+    static_assert(std::is_enum_v<Enum>);
+    constexpr auto desc = Get<Enum>();
+    out = {};
+    desc.for_each_field([&](auto f){
+        if (!out.size() && f.value == value) {
+            out = f.name;
+        }
+    });
+    return bool(out.size());
+}
+
+template<typename Enum>
+constexpr bool name_to_enum(std::string_view name, Enum& out) {
+    static_assert(std::is_enum_v<Enum>);
+    constexpr auto desc = Get<Enum>();
+    bool wasFound = false;
+    desc.for_each_field([&](auto f){
+        if (!wasFound && f.name == name) {
+            out = f.value;
+            wasFound = true;
+        }
+    });
+    return wasFound;
+}
+
 } //desc
 
 #endif //DESCRIBE_HPP
