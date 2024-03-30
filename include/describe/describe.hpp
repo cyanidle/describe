@@ -100,8 +100,7 @@ template<typename T, typename Who>
 constexpr bool has_attr_v = !std::is_void_v<extract_attr_t<T, Who>>;
 
 template<auto field> struct Field {
-    static_assert(
-        std::is_member_pointer_v<decltype(field)> || std::is_enum_v<decltype(field)>,
+    static_assert(std::is_member_pointer_v<decltype(field)> || std::is_enum_v<decltype(field)>,
         "Field can only be used with &_::members or enums");
     std::string_view name;
     static constexpr auto value = field;
@@ -114,12 +113,12 @@ template<auto field> struct Field {
     }
 };
 
-template<typename Cls, typename...Fields>
+template<typename Cls, typename Parent, typename...Fields>
 struct Description : protected Fields...
 {
     using type = Cls;
+    using parent = Parent;
     std::string_view name;
-    std::string_view ns;
     static constexpr auto is_enum = std::is_enum_v<Cls>;
     static constexpr auto fields_count = det::count<false, Fields...>();
     static constexpr auto methods_count = det::count<true, Fields...>();
@@ -170,8 +169,8 @@ struct get_attrs<Field<field>, std::enable_if_t<det::has_GetAttrs<Field<field>>:
     using type = decltype(GetAttrs(Tag<typename Field<field>::cls>{}, Field<field>{}));
 };
 
-template<typename Cls, auto...fs>
-struct get_attrs<Description<Cls, Field<fs>...>> : get_attrs<Cls> {};
+template<typename Cls, typename Parent, auto...fs>
+struct get_attrs<Description<Cls, Parent, Field<fs>...>> : get_attrs<Cls> {};
 
 template<typename Cls>
 struct get_attrs<const Cls> : get_attrs<Cls> {};
@@ -195,18 +194,27 @@ template<typename T> constexpr auto Get() {
 
 template<typename Cls, auto...fields>
 constexpr auto Describe(std::string_view clsname, std::string_view names) {
-    Description<Cls, Field<fields>...> result = {};
-    if (auto split = clsname.rfind("::"); split != std::string_view::npos) {
-        result.ns = clsname.substr(0, split);
-        result.name = clsname.substr(split + 2);
-    } else {
-        result.name = clsname;
-    }
+    Description<Cls, void, Field<fields>...> result = {};
+    result.name = clsname;
     do_for<sizeof...(fields)>([&](auto i) {
-        auto& field = result.template get<i()>();
-        static_assert(std::is_same_v<Cls, typename std::decay_t<decltype(field)>::cls>,
-                      "All fields must be From the same Type");
-        field.name = det::next_name(names);
+        result.template get<i()>().name = det::next_name(names);
+    });
+    return result;
+}
+
+template<typename Cls, auto...fields, typename ParCls, typename ParCls2, auto...parFields>
+constexpr auto Describe(Description<ParCls, ParCls2, Field<parFields>...> parent,
+                        std::string_view clsname,
+                        std::string_view names)
+{
+    constexpr auto inherited = sizeof...(parFields);
+    Description<Cls, ParCls, Field<parFields>..., Field<fields>...> result = {};
+    result.name = clsname;
+    do_for<inherited>([&](auto i) {
+        result.template get<i()>() = parent.template get<i()>();
+    });
+    do_for<sizeof...(fields)>([&](auto i) {
+        result.template get<i() + inherited>().name = det::next_name(names);
     });
     return result;
 }
@@ -223,27 +231,27 @@ template<typename Cls> struct descHelper {
 friend constexpr auto GetDescription(::describe::Tag<cls>);
 
 #define DESCRIBE(cls, ...) \
-inline constexpr auto GetDescription(::describe::Tag<cls>) { \
-    using _ = cls; \
-    return ::describe::det::descHelper<_>::template Describe<__VA_ARGS__>(#cls, #__VA_ARGS__); \
-}
+inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ = cls; \
+return ::describe::Describe<cls,##__VA_ARGS__>(#cls, #__VA_ARGS__);}
+
+#define DESCRIBE_INHERIT(cls, parent, ...) \
+inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ = cls; \
+return ::describe::Describe<cls,##__VA_ARGS__>(::describe::Get<parent>(), #cls, #__VA_ARGS__);}
 
 #define DESCRIBE_ATTRS(cls, ...) \
 inline constexpr auto GetAttrs(::describe::Tag<cls>) { \
-    return ::describe::Attrs<__VA_ARGS__>{}; \
-}
-
+return ::describe::Attrs<__VA_ARGS__>{};}
 
 #define DESCRIBE_FIELD_ATTRS(cls, field, ...) \
 inline constexpr auto GetAttrs(::describe::Tag<cls>, ::describe::Field<&cls::field>) { \
-        return ::describe::Attrs<__VA_ARGS__>{}; }
+return ::describe::Attrs<__VA_ARGS__>{}; }
 
 #define DESCRIBE_CLASS(...) \
 inline constexpr auto GetDescription(::describe::Tag<__VA_ARGS__>) { \
-        using _ = __VA_ARGS__; constexpr std::string_view _clsName = #__VA_ARGS__;
+using _ = __VA_ARGS__; constexpr std::string_view _clsName = #__VA_ARGS__;
 
 #define DESCRIBE_FIELDS(...) \
-    return ::describe::det::descHelper<_>::template Describe<__VA_ARGS__>(_clsName, #__VA_ARGS__); }
+return ::describe::det::descHelper<_>::template Describe<__VA_ARGS__>(_clsName, #__VA_ARGS__); }
 
 // Utils
 template<typename T>
@@ -277,8 +285,7 @@ constexpr bool name_to_enum(std::string_view name, Enum& out) {
     bool wasFound = false;
     desc.for_each_field([&](auto f){
         if (!wasFound && f.name == name) {
-            out = f.value;
-            wasFound = true;
+            out = f.value; wasFound = true;
         }
     });
     return wasFound;

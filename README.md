@@ -3,6 +3,7 @@ Minimal C++17 Reflection Library in 300 LOC.
 
 # Features
 * Constexpr field pointer + name iteration
+* Inheritance
 * Enums support
 * Templates support
 * Friend support
@@ -60,6 +61,12 @@ void test() {
     print_enum<ClEnum>(); //-> bim: 0, bam: 1, bom: 2
 }
 ```
+
+## Inheritance
+
+TODO! more info
+
+DESCRIBE_INHERIT(class, parent, ...)
 
 ## Attributes
 
