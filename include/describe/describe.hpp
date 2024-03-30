@@ -219,24 +219,23 @@ constexpr auto Describe(Description<ParCls, ParCls2, Field<parFields>...> parent
     return result;
 }
 
-namespace det {
-template<typename Cls> struct descHelper {
-    template<auto...fs> static constexpr auto Describe(std::string_view c, std::string_view ns) {
-        return describe::Describe<Cls, fs...>(c, ns);
+template<typename Cls> struct _ {
+    template<auto...fs, typename...Args>
+    static constexpr auto desc(Args...args) {
+        return Describe<Cls, fs...>(args...);
     }
 };
-} //det
 
 #define ALLOW_DESCRIBE_FOR(cls) \
 friend constexpr auto GetDescription(::describe::Tag<cls>);
 
 #define DESCRIBE(cls, ...) \
 inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ = cls; \
-return ::describe::Describe<cls,##__VA_ARGS__>(#cls, #__VA_ARGS__);}
+return ::describe::_<cls>::template desc<__VA_ARGS__>(#cls, #__VA_ARGS__);}
 
 #define DESCRIBE_INHERIT(cls, parent, ...) \
 inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ = cls; \
-return ::describe::Describe<cls,##__VA_ARGS__>(::describe::Get<parent>(), #cls, #__VA_ARGS__);}
+return ::describe::_<cls>::template desc<__VA_ARGS__>(::describe::Get<parent>(), #cls, #__VA_ARGS__);}
 
 #define DESCRIBE_ATTRS(cls, ...) \
 inline constexpr auto GetAttrs(::describe::Tag<cls>) { \
