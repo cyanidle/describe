@@ -64,9 +64,28 @@ void test() {
 
 ## Inheritance
 
-TODO! more info
+```cpp
+struct Parent {
+    string a;
+    string b;
+};
 
-DESCRIBE_INHERIT(class, parent, ...)
+DESCRIBE(Parent, &_::a, &_::b)
+
+struct Child : Parent {
+    string c;
+};
+
+
+DESCRIBE_INHERIT(Child, Parent, &_::c)
+
+constexpr auto desc = describe::Get<Child>();
+static_assert(desc.fields_count == 3);
+static_assert(desc.get<0>().name == "a");
+static_assert(desc.get<1>().name == "b");
+static_assert(desc.get<2>().name == "c");
+
+```
 
 ## Attributes
 
