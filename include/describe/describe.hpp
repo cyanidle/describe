@@ -1,7 +1,7 @@
 #ifndef DESCRIBE_HPP
 #define DESCRIBE_HPP
-#include <cstdint>
-#include <cstddef>
+#include <stdint.h>
+#include <stddef.h>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -18,16 +18,6 @@ template<auto field> struct Field;
 template<typename T> constexpr auto Get();
 
 namespace detail {
-
-template<size_t idx, typename T = void, typename...Ts>
-struct pack_elem {
-    using type = typename pack_elem<idx-1, Ts...>::type;
-};
-
-template<typename T, typename...Ts>
-struct pack_elem<0, T, Ts...> {
-    using type = T;
-};
 
 template <typename T, std::enable_if_t<std::is_enum_v<T>,int> = 0> auto get_memptr_type(T) -> Tag<T>;
 template <typename T, std::enable_if_t<std::is_enum_v<T>,int> = 0> auto get_memptr_class(T) -> Tag<T>;
@@ -51,6 +41,11 @@ constexpr std::string_view next_name(std::string_view& src) {
     return result;
 }
 
+template<typename T, typename...Ts>
+constexpr bool has(Attrs<Ts...>) {
+    return (false || ... || std::is_base_of_v<T, Ts>);
+}
+
 template<typename T>
 auto get_attr(Attrs<>) -> Tag<void> {return {};}
 
@@ -69,7 +64,8 @@ template<typename T, typename=void> struct has_static_attrs : std::false_type {}
 template<typename T> struct has_attrs<T, std::void_t<decltype(GetAttrs(Tag<T>{}))>> : std::true_type {};
 template<typename T> struct has_field_attrs<T, std::void_t<decltype(GetAttrs(Tag<typename T::cls>{}, T{}))>> : std::true_type {};
 template<typename T> struct has_static_attrs<T, std::void_t<typename T::GetAttrs>> : std::true_type {};
-
+template<size_t idx, typename Head, typename...Ts> struct pack_idx : pack_idx<idx - 1, Ts...> {};
+template<typename Head, typename...Ts> struct pack_idx<0, Head, Ts...> {using type = Head;};
 } //detail
 
 template<auto field> struct Field {
@@ -96,15 +92,9 @@ struct Description : protected Fields...
     static constexpr auto fields_count = detail::count<false, Fields...>();
     static constexpr auto methods_count = detail::count<true, Fields...>();
     static constexpr auto all_count = fields_count + methods_count;
-    template<size_t idx> using field_elem_t = typename detail::pack_elem<idx, Fields...>::type;
-    template<size_t idx> constexpr const auto& get() const noexcept {
-        return static_cast<const field_elem_t<idx>&>(*this);
-    }
-    template<size_t idx> constexpr auto& get() noexcept {
-        return static_cast<field_elem_t<idx>&>(*this);
-    }
-    template<typename T> constexpr T cast() {return static_cast<T>(*this);}
-    template<typename T> constexpr T cast() const {return static_cast<T>(*this);}
+    static constexpr auto npos = size_t(-1);
+    template<auto member> constexpr auto& get() {return static_cast<Field<member>&>(*this);}
+    template<auto member> constexpr const auto& get() const {return static_cast<const Field<member>&>(*this);}
     template<typename F> constexpr void for_each_field(F&& f) const {
         auto helper = [&f](auto field){
             if constexpr (field.is_method == false) f(field);
@@ -118,9 +108,36 @@ struct Description : protected Fields...
         (helper(static_cast<const Fields&>(*this)), ...);
     }
     template<typename F> constexpr void for_each(F&& f) const {
-        (f(static_cast<const Fields&>(*this)), ...);
+        (static_cast<void>(f(static_cast<const Fields&>(*this))), ...);
+    }
+    template<auto f> static constexpr size_t index_of(Field<f>) {
+        size_t result = npos;
+        size_t count = size_t(-1);
+        ((count++, std::is_same_v<Field<f>, Fields> && (result = count)), ...);
+        return result;
+    }
+    template<auto f> static constexpr size_t index_of() {
+        return index_of<f>(Field<f>{});
+    }
+    constexpr size_t index_of(std::string_view name) const {
+        size_t result = npos;
+        size_t count = size_t(-1);
+        ((count++, (static_cast<const Fields&>(*this).name == name) && (result = count)), ...);
+        return result;
     }
 };
+
+template<size_t idx, typename Cls, typename Parent, typename...Fields>
+constexpr auto& by_index(Description<Cls, Parent, Fields...>& desc) {
+    using f = typename detail::pack_idx<idx, Fields...>::type;
+    return desc.template get<f::value>();
+}
+
+template<size_t idx, typename Cls, typename Parent, typename...Fields>
+constexpr const auto& by_index(Description<Cls, Parent, Fields...> const& desc) {
+    using f = typename detail::pack_idx<idx, Fields...>::type;
+    return desc.template get<f::value>();
+}
 
 template<typename F, typename = void>
 struct get_attrs {
@@ -156,7 +173,7 @@ template<typename T, typename From>
 using extract_attr_t = typename decltype(detail::get_attr<T>(get_attrs_t<From>{}))::type;
 
 template<typename T, typename Who>
-constexpr bool has_attr_v = !std::is_void_v<extract_attr_t<T, Who>>;
+constexpr bool has_attr_v = detail::has<T>(get_attrs_t<Who>{});
 
 template<typename T, typename=void>
 struct is_described : std::false_type {};
@@ -168,6 +185,10 @@ struct is_described<T,
 
 template<typename T>
 constexpr auto is_described_v = is_described<T>::value;
+template<typename T>
+constexpr auto is_described_struct_v = is_described<T>::value && !std::is_enum_v<T>;
+template<typename T>
+constexpr auto is_described_enum_v = is_described<T>::value && std::is_enum_v<T>;
 
 template<typename T> constexpr auto Get() {
     static_assert(is_described_v<T>, "Please use DESCRIBE() macro");
@@ -179,7 +200,7 @@ template<typename Cls, auto...fields>
 constexpr auto Describe(std::string_view clsname, std::string_view names) {
     Description<Cls, void, Field<fields>...> result = {};
     result.name = clsname;
-    ((void)(result.template cast<Field<fields>&>().name = detail::next_name(names)), ...);
+    (static_cast<void>(result.template get<fields>().name = detail::next_name(names)), ...);
     return result;
 }
 
@@ -190,8 +211,8 @@ constexpr auto Describe(Description<ParCls, ParCls2, Field<parFields>...> parent
 {
     Description<Cls, ParCls, Field<parFields>..., Field<fields>...> result = {};
     result.name = clsname;
-    ((void)(result.template cast<Field<parFields>&>().name = parent.template cast<Field<parFields>&>()), ...);
-    ((void)(result.template cast<Field<fields>&>().name = detail::next_name(names)), ...);
+    (static_cast<void>(result.template get<parFields>().name = parent.template get<parFields>()), ...);
+    (static_cast<void>(result.template get<fields>().name = detail::next_name(names)), ...);
     return result;
 }
 
@@ -208,7 +229,7 @@ friend constexpr auto GetDescription(::describe::Tag<cls>);
 #define _D_DESCRIBE(cls, ...) ::describe::_<cls>::template desc<__VA_ARGS__>
 
 #define DESCRIBE(cls, ...) \
-inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ = cls; \
+inline constexpr auto GetDescription(::describe::Tag<cls>) { using _ [[maybe_unused]] = cls; \
 return _D_DESCRIBE(cls, __VA_ARGS__)(#cls, #__VA_ARGS__);}
 
 #define DESCRIBE_INHERIT(cls, parent, ...) \
