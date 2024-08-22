@@ -186,7 +186,7 @@ struct is_described<T,
 template<typename T>
 constexpr auto is_described_v = is_described<T>::value;
 template<typename T>
-constexpr auto is_described_struct_v = is_described<T>::value && !std::is_enum_v<T>;
+constexpr auto is_described_struct_v = is_described<T>::value && std::is_object_v<T>;
 template<typename T>
 constexpr auto is_described_enum_v = is_described<T>::value && std::is_enum_v<T>;
 
@@ -211,7 +211,7 @@ constexpr auto Describe(Description<ParCls, ParCls2, Field<parFields>...> parent
 {
     Description<Cls, ParCls, Field<parFields>..., Field<fields>...> result = {};
     result.name = clsname;
-    (static_cast<void>(result.template get<parFields>().name = parent.template get<parFields>()), ...);
+    (static_cast<void>(result.template get<parFields>().name = parent.template get<parFields>().name), ...);
     (static_cast<void>(result.template get<fields>().name = detail::next_name(names)), ...);
     return result;
 }
