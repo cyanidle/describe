@@ -186,7 +186,7 @@ struct is_described<T,
 template<typename T>
 constexpr auto is_described_v = is_described<T>::value;
 template<typename T>
-constexpr auto is_described_struct_v = is_described<T>::value && std::is_object_v<T>;
+constexpr auto is_described_struct_v = is_described<T>::value && std::is_object_v<T> && !std::is_enum_v<T>;
 template<typename T>
 constexpr auto is_described_enum_v = is_described<T>::value && std::is_enum_v<T>;
 
