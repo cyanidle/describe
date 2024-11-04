@@ -60,12 +60,9 @@ auto get_attr(Attrs<Head, Ts...>) {
     }
 }
 
-template<typename T, typename=void> struct has_attrs : std::false_type {};
-template<typename T, typename=void> struct has_field_attrs : std::false_type {};
-template<typename T> struct has_attrs<T, std::void_t<decltype(GetAttrs(Tag<T>{}))>> : std::true_type {};
-template<typename T> struct has_field_attrs<T, std::void_t<decltype(GetAttrs(Tag<typename T::cls>{}, T{}))>> : std::true_type {};
 template<size_t idx, typename Head, typename...Ts> struct pack_idx : pack_idx<idx - 1, Ts...> {};
 template<typename Head, typename...Ts> struct pack_idx<0, Head, Ts...> {using type = Head;};
+
 } //detail
 
 template<auto field>
@@ -118,18 +115,18 @@ struct Description : protected Fields...
     }
 };
 
-template<typename F, typename = void>
-struct get_attrs {
-    using type = Attrs<>;
-};
+//! Presence of describe::Tag<ns::T> enables ADL for both describe:: AND ns::
+// Main ADL-fallbacks:
+void GetDescription(...);
+Attrs<> GetAttrs(...);
 
 template<typename C>
-struct get_attrs<C, std::enable_if_t<detail::has_attrs<C>::value>> {
+struct get_attrs {
     using type = decltype(GetAttrs(Tag<C>{}));
 };
 
 template<auto field>
-struct get_attrs<Field<field>, std::enable_if_t<detail::has_field_attrs<Field<field>>::value>> {
+struct get_attrs<Field<field>> {
     // without Tag<Cls> as arg ADL does not work!
     using type = decltype(GetAttrs(Tag<typename Field<field>::cls>{}, Field<field>{}));
 };
@@ -149,23 +146,17 @@ using extract_attr_t = typename decltype(detail::get_attr<T>(get_attrs_t<From>{}
 template<typename T, typename Who>
 constexpr bool has_attr_v = detail::has<T>(get_attrs_t<Who>{});
 
-template<typename T, typename=void>
-struct is_described : std::false_type {};
-
 template<typename T>
-struct is_described<T,
-                    std::void_t<decltype(GetDescription(Tag<T>{}))
-                                >>: std::true_type {};
+struct is_described : std::bool_constant<!std::is_void_v<decltype(GetDescription(Tag<T>{}))>> {};
 
 template<typename T>
 constexpr auto is_described_v = is_described<T>::value;
 template<typename T>
-constexpr auto is_described_struct_v = is_described<T>::value && std::is_object_v<T> && !std::is_enum_v<T>;
+constexpr auto is_described_struct_v = is_described<T>::value && std::is_class_v<T>;
 template<typename T>
 constexpr auto is_described_enum_v = is_described<T>::value && std::is_enum_v<T>;
 
 template<typename T> constexpr auto Get() {
-    static_assert(is_described_v<T>, "Please use DESCRIBE() macro");
     constexpr auto res = GetDescription(Tag<T>{});
     return res;
 }
@@ -199,8 +190,8 @@ constexpr auto Describe(
 #define _DESC_VARG(cls, ...) __VA_ARGS__
 
 #define DESCRIBE_CLASS(...) \
-inline constexpr auto GetDescription(::describe::Tag<__VA_ARGS__>) { \
-    using _ = __VA_ARGS__; std::string_view _clsName = _DESC_STR(__VA_ARGS__);
+    inline constexpr auto GetDescription(::describe::Tag<__VA_ARGS__>) { \
+        using _ = __VA_ARGS__; std::string_view _clsName = _DESC_STR(__VA_ARGS__);
 
 #define DESCRIBE_FIELDS(...) \
     return ::describe::Describe<__VA_ARGS__>(::describe::Tag<_>{}, _clsName, _DESC_STR(__VA_ARGS__));}
@@ -223,7 +214,7 @@ inline constexpr auto GetDescription(::describe::Tag<__VA_ARGS__>) { \
 
 //! @achtung @warning THESE Should always be the same for all Translation Units
 #define DESCRIBE_FIELD_ATTRS(cls, field, ...) \
-inline constexpr auto GetAttrs(::describe::Tag<cls>, ::describe::Field<&cls::field>) { \
+    inline constexpr auto GetAttrs(::describe::Tag<cls>, ::describe::Field<&cls::field>) { \
         return ::describe::Attrs<__VA_ARGS__>{};}
 
 // Utils
@@ -232,39 +223,44 @@ constexpr auto field_names() {
     constexpr auto desc = describe::Get<T>();
     std::array<std::string_view, desc.fields_count> result;
     size_t idx = 0;
-    desc.for_each_field([&](auto f){
-        result[idx++] = f.name;
+    desc.for_each([&](auto f){
+        if constexpr (f.is_field) {
+            result[idx++] = f.name;
+        }
     });
     return result;
 }
 
-template<typename Enum> [[nodiscard]]
+template<typename Enum, std::enable_if_t<is_described_enum_v<Enum>, int> = 1>
+[[nodiscard]]
 constexpr bool enum_to_name(Enum value, std::string_view& out) {
-    static_assert(std::is_enum_v<Enum>);
     bool found = false;
-    out = {};
-    Get<Enum>().for_each_field([&](auto f){
-        if (!found && f.value == value) {
-            out = f.name;
-            found = true;
+    Get<Enum>().for_each([&](auto f){
+        if constexpr (f.is_enum) {
+            if (!found && f.value == value) {
+                out = f.name;
+                found = true;
+            }
         }
     });
     return found;
 }
 
-template<typename Enum> [[nodiscard]]
+template<typename Enum, std::enable_if_t<is_described_enum_v<Enum>, int> = 1>
+[[nodiscard]]
 constexpr bool name_to_enum(std::string_view name, Enum& out) {
-    static_assert(std::is_enum_v<Enum>);
     bool found = false;
-    Get<Enum>().for_each_field([&](auto f){
-        if (!found && f.name == name) {
-            out = f.value;
-            found = true;
+    Get<Enum>().for_each([&](auto f){
+        if constexpr (f.is_enum) {
+            if (!found && f.name == name) {
+                out = f.value;
+                found = true;
+            }
         }
     });
     return found;
 }
 
-} //desc
+} //describe
 
 #endif //DESCRIBE_HPP

@@ -76,3 +76,13 @@ DESCRIBE(Empty)
 
 struct EmptyChild {};
 DESCRIBE_INHERIT(Empty, EmptyChild)
+
+struct NoDesc{};
+static_assert(!describe::is_described_v<NoDesc>);
+//constexpr auto fails = describe::Get<NoDesc>();
+
+// is
+static_assert(describe::is_described_struct_v<Empty>);
+static_assert(!describe::is_described_struct_v<Enum>);
+static_assert(!describe::is_described_struct_v<ClEnum>);
+static_assert(!describe::is_described_struct_v<int>);

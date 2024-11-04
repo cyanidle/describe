@@ -13,6 +13,9 @@ struct in_range : validator {
     }
 };
 
+struct HasNoAttrs {};
+static_assert(std::is_same_v<describe::get_attrs_t<HasNoAttrs>, describe::Attrs<>>);
+
 struct Data {
     std::string name;
     int value;
