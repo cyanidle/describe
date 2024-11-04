@@ -183,11 +183,21 @@ constexpr auto Describe(
     return result;
 }
 
-#define _DESC_STR2(...) #__VA_ARGS__
+// Helpers
 #define _DESC_STR(...) _DESC_STR2(__VA_ARGS__)
-// Used to avoid "at least one varg param needed"
-#define _DESC_CLS(cls, ...) cls
-#define _DESC_VARG(cls, ...) __VA_ARGS__
+#define _DESC_STR2(...) #__VA_ARGS__
+#define _DESC_CAT(x, y) _DESC_CAT_AUX(x, y)
+#define _DESC_CAT_AUX(x, y) x##y
+// Black magic: use ppstep for these 4
+#define _DESC_CONTAINS_COMMA(...) _DESC_X_AS_COMMA(__VA_ARGS__, _DESC_COMMA, ~)
+#define _DESC_X_AS_COMMA(_head, x, ...) _DESC_CONTAINS_COMMA_RESULT(x, 0, 1, ~)
+#define _DESC_CONTAINS_COMMA_RESULT(x, _, result, ...) result
+#define _DESC_COMMA ,
+// Macros used to avoid "at least one varg param needed"
+#define _DESC_HEAD(head, ...) head
+#define _DESC_TAIL(...) _DESC_CAT(_DESC_TAIL, _DESC_CONTAINS_COMMA(__VA_ARGS__))(__VA_ARGS__)
+#define _DESC_TAIL0(head)
+#define _DESC_TAIL1(head, ...) __VA_ARGS__
 
 #define DESCRIBE_CLASS(...) \
     inline constexpr auto GetDescription(::describe::Tag<__VA_ARGS__>) { \
@@ -200,12 +210,12 @@ constexpr auto Describe(
     return ::describe::Describe<__VA_ARGS__>(::describe::Get<parent>(), ::describe::Tag<_>{}, _clsName, _DESC_STR(__VA_ARGS__));}
 
 #define DESCRIBE(...) \
-    DESCRIBE_CLASS(_DESC_CLS(__VA_ARGS__)) \
-    DESCRIBE_FIELDS(_DESC_VARG(__VA_ARGS__))
+    DESCRIBE_CLASS(_DESC_HEAD(__VA_ARGS__, ~)) \
+    DESCRIBE_FIELDS(_DESC_TAIL(__VA_ARGS__))
 
 #define DESCRIBE_INHERIT(parent, ...)  \
-    DESCRIBE_CLASS(_DESC_CLS(__VA_ARGS__)) \
-    DESCRIBE_FIELDS_INHERIT(parent, _DESC_VARG(__VA_ARGS__))
+    DESCRIBE_CLASS(_DESC_HEAD(__VA_ARGS__, ~)) \
+    DESCRIBE_FIELDS_INHERIT(parent, _DESC_TAIL(__VA_ARGS__))
 
 //! @achtung @warning THESE Should always be the same for all Translation Units
 #define DESCRIBE_ATTRS(cls, ...) \
