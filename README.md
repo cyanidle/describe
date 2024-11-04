@@ -13,33 +13,26 @@ Minimal C++17 Reflection Library in 300 LOC.
 
 ## Basic
 ```cpp
-#include <describe/describe.hpp>
-#include <iostream>
-
 struct Data {
     int a;
     int b;
-    void method() {
-
-    }
+    void method() {}
 };
 
-// Inside macro a '_' alias is defined for 'Data'
-DESCRIBE(Data, &_::a, &_::b, &_::method)
+constexpr auto renamed = &Data::a;
+DESCRIBE(Data, renamed, &_::b, &_::method)
 
 constexpr auto desc = describe::Get<Data>();
-static_assert(desc.all_count == 3);
-static_assert(desc.fields_count == 2);
-static_assert(desc.methods_count == 1);
+static_assert(desc.size == 3);
 
 void print_fields(const Data& d) {
-    desc.for_each_field([&](auto f) {
-        std::cout << f.name << ": " << f.get(d) << ", ";
+    std::cout << desc.name << ": ";
+    desc.for_each([&](auto f){
+        if constexpr (f.is_field) {
+            std::cout << f.name << " -> " << f.get(d) << ", ";
+        }
     });
-}
-
-void test_print() {
-    print_fields(Data{1, 2}); // -> a: 1, b: 2,
+    std::cout << std::endl;
 }
 
 enum Enum {foo, bar, baz,};
@@ -49,16 +42,23 @@ enum class ClEnum {bim, bam, bom,};
 DESCRIBE(ClEnum, _::bim, _::bam, _::bom) // enum classes are supported
 
 template<typename T>
-void print_enum() {
-    describe::Get<T>().for_each_field([&](auto f) {
-        using underlying = std::underlying_type_t<typename decltype(f)::type>;
-        std::cout << f.name << ": " << underlying(f.value) << ", ";
+void print_enum(T) {
+    constexpr auto desc = describe::Get<T>();
+    std::cout << desc.name << ": ";
+    desc.for_each([&](auto f) {
+        if constexpr (f.is_enum) {
+            using underlying = std::underlying_type_t<typename decltype(f)::type>;
+            std::cout << f.name << " -> " << underlying(f.value) << ", ";
+        }
     });
+    std::cout << std::endl;
 }
 
-void test() {
-    print_enum<Enum>(); //-> foo: 0, bar: 1, baz: 2
-    print_enum<ClEnum>(); //-> bim: 0, bam: 1, bom: 2
+int main(int argc, char *argv[])
+{
+    print_fields(Data{1, 2}); // -> renamed: 1, b: 2,
+    print_enum(Enum{}); //-> foo: 0, bar: 1, baz: 2
+    print_enum(ClEnum{}); //-> bim: 0, bam: 1, bom: 2
 }
 ```
 
@@ -66,33 +66,31 @@ void test() {
 
 ```cpp
 struct Parent {
-    string a;
-    string b;
+    std::string a;
+    std::string b;
 };
 
 DESCRIBE(Parent, &_::a, &_::b)
 
 struct Child : Parent {
-    string c;
+    std::string c;
 };
 
 
-DESCRIBE_INHERIT(Child, Parent, &_::c)
+DESCRIBE_INHERIT(Parent, Child, &_::c)
 
-constexpr auto desc = describe::Get<Child>();
-static_assert(desc.fields_count == 3);
-static_assert(desc.get<0>().name == "a");
-static_assert(desc.get<1>().name == "b");
-static_assert(desc.get<2>().name == "c");
-
+constexpr auto child_desc = describe::Get<Child>();
+static_assert(child_desc.size == 3);
+static_assert(child_desc.get<0>().name == "a");
+static_assert(child_desc.get<1>().name == "b");
+static_assert(child_desc.get<2>().name == "c");
 ```
 
 ## Attributes
 
 ```cpp
-#include <describe/describe.hpp>
-#include <string>
 
+// Attributes are just structs!
 struct BIG {};
 struct small {};
 struct validator {};
@@ -125,23 +123,10 @@ static_assert(std::is_same_v<object_check, in_range<0, 7>>);
 using all = describe::get_attrs_t<Data>;
 static_assert(std::is_same_v<all, describe::Attrs<BIG, in_range<0, 7>>>);
 
-// Fields inherit attributes from class
-constexpr auto a = describe::Get<Data>().get<0>();
-using all_a = describe::get_attrs_t<decltype(a)>;
-static_assert(std::is_same_v<all, all_a>);
-
-// Unless specified for field individually
-struct custom {};
-
-constexpr auto b = describe::Get<Data>().get<0>();
-using all_b = describe::get_attrs_t<decltype(a)>;
-static_assert(std::is_same_v<all, all_a>);
-
 ```
 
 ## Templates
 ```cpp
-#include <describe/describe.hpp>
 
 namespace test {
 
@@ -155,12 +140,11 @@ struct Data {
 template<typename T>
 DESCRIBE(test::Data<T>, &_::a, &_::b)
 
-}
+} //test
 
 constexpr auto desc = describe::Get<test::Data<int>>();
-static_assert(desc.name == "Data<T>");
-static_assert(desc.ns == "test");
 constexpr auto B = desc.get<1>();
+static_assert(B.name == "b");
 static_assert(std::is_same_v<decltype(B)::type, int[10]>);
 
 
@@ -172,36 +156,22 @@ template<auto a, auto b> struct sum {
 // DESCRIBE_CLASS(...) DESCRIBE_FIELDS(...) pair for multi-param templates
 template<auto a, auto b>
 DESCRIBE_CLASS(sum<a, b>)
-DESCRIBE_FIELDS(&_::as_int)
-
+DESCRIBE_FIELDS(&_::as_int) //may be empty!
 
 constexpr auto sum_desc = describe::Get<sum<1, 2>>();
 static_assert(sum_desc.name == "sum<a, b>");
-static_assert(sum_desc.ns == "");
-
-int main(int argc, char *argv[]) {
-    return 0;
-}
 
 ```
 
 ## Private fields
 ```cpp
-#include <describe/describe.hpp>
 
 class Shy {
-public:
-    ALLOW_DESCRIBE_FOR(Shy)
-private:
-    int a;
-};
-
-DESCRIBE(Shy, &_::a)
-
-class MoreShy {
     int a;
 public:
-    friend DESCRIBE(MoreShy, &_::a);
+    // DESCRIBE() just creates ADL function definition. 
+    // we can add `friend`
+    friend DESCRIBE(Shy, &_::a);
 };
 
 ```

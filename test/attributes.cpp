@@ -1,6 +1,7 @@
 #include <describe/describe.hpp>
 #include <string>
 
+// Attributes are just structs!
 struct BIG {};
 struct small {};
 struct validator {};
