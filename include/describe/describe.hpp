@@ -219,11 +219,19 @@ constexpr auto Describe(
 
 // Utils
 template<typename T>
+constexpr size_t fields_count() {
+    size_t res = 0;
+    Get<T>().for_each([&](auto f){
+        if constexpr (f.is_field) res++;
+    });
+    return res;
+}
+
+template<typename T>
 constexpr auto field_names() {
-    constexpr auto desc = describe::Get<T>();
-    std::array<std::string_view, desc.fields_count> result;
+    std::array<std::string_view, fields_count<T>()> result;
     size_t idx = 0;
-    desc.for_each([&](auto f){
+    Get<T>().for_each([&](auto f){
         if constexpr (f.is_field) {
             result[idx++] = f.name;
         }

@@ -47,6 +47,19 @@ int main(int argc, char *argv[])
     print_fields(Data{1, 2}); // -> renamed: 1, b: 2,
     print_enum(Enum{}); //-> foo: 0, bar: 1, baz: 2
     print_enum(ClEnum{}); //-> bim: 0, bam: 1, bom: 2
+
+    Enum value = foo;
+    std::string_view value_name;
+    if (!describe::enum_to_name(value, value_name) || value_name != "foo") {
+        return 1;
+    }
+    if (!describe::name_to_enum(value_name, value) || value != foo) {
+        return 1;
+    }
+    if (describe::name_to_enum("asd", value)) {
+        return 1;
+    }
+    return 0;
 }
 
 // Inherit
@@ -86,3 +99,7 @@ static_assert(describe::is_described_struct_v<Empty>);
 static_assert(!describe::is_described_struct_v<Enum>);
 static_assert(!describe::is_described_struct_v<ClEnum>);
 static_assert(!describe::is_described_struct_v<int>);
+
+// utils
+
+constexpr auto fs = describe::field_names<Child>();
