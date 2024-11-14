@@ -244,13 +244,11 @@ constexpr auto Describe(
 
 //! @achtung @warning THESE Should always be the same for all Translation Units
 #define DESCRIBE_ATTRS(cls, ...) \
-    inline constexpr auto GetAttrs(::describe::Tag<cls>) { \
-        return ::describe::Attrs<__VA_ARGS__>{};}
+    auto GetAttrs(::describe::Tag<cls>) -> ::describe::Attrs<__VA_ARGS__>;
 
 //! @achtung @warning THESE Should always be the same for all Translation Units
 #define DESCRIBE_FIELD_ATTRS(cls, field, ...) \
-    inline constexpr auto GetAttrs(::describe::Tag<cls>, ::describe::Field<&cls::field>) { \
-        return ::describe::Attrs<__VA_ARGS__>{};}
+    auto GetAttrs(::describe::Tag<cls>, ::describe::Field<&cls::field>) -> ::describe::Attrs<__VA_ARGS__>;
 
 // Utils
 template<typename T>
