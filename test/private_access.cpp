@@ -3,5 +3,9 @@
 class Shy {
     int a;
 public:
-    friend DESCRIBE(Shy, &_::a);
+    friend class Shy_Describe;
 };
+
+DESCRIBE("Shy", Shy) {
+    MEMBER("a", &_::a);
+}

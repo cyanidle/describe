@@ -32,47 +32,50 @@ struct Test {
     T a17;
 };
 
-template<typename T>
-DESCRIBE(Test<T>, &_::a, &_::a0, &_::a1, &_::a2,
-         &_::a3, &_::a4, &_::a5, &_::a6, &_::a7,
-         &_::a8, &_::a9, &_::a10, &_::a11, &_::a12,
-         &_::a13, &_::a14, &_::a15, &_::a16, &_::a17)
-template<typename T>
-DESCRIBE_ATTRS(Test<T>, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a0, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a1, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a2, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a3, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a4, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a5, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a6, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a7, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a8, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a9, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a10, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a11, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a12, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a13, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a14, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a15, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a16, attr, attr2, attr3)
-template<typename T> DESCRIBE_FIELD_ATTRS(Test<T>, a17, attr, attr2, attr3)
+DESCRIBE_TEMPLATE((typename T), "Test", Test, (T), attr, attr2, attr3) {
+    MEMBER("a", &_::a, attr, attr2, attr3);
+    MEMBER("a0", &_::a0, attr, attr2, attr3);
+    MEMBER("a1", &_::a1, attr, attr2, attr3);
+    MEMBER("a2", &_::a2, attr, attr2, attr3);
+    MEMBER("a3", &_::a3, attr, attr2, attr3);
+    MEMBER("a4", &_::a4, attr, attr2, attr3);
+    MEMBER("a5", &_::a5, attr, attr2, attr3);
+    MEMBER("a6", &_::a6, attr, attr2, attr3);
+    MEMBER("a7", &_::a7, attr, attr2, attr3);
+    MEMBER("a8", &_::a8, attr, attr2, attr3);
+    MEMBER("a9", &_::a9, attr, attr2, attr3);
+    MEMBER("a10", &_::a10, attr, attr2, attr3);
+    MEMBER("a11", &_::a11, attr, attr2, attr3);
+    MEMBER("a12", &_::a12, attr, attr2, attr3);
+    MEMBER("a13", &_::a13, attr, attr2, attr3);
+    MEMBER("a14", &_::a14, attr, attr2, attr3);
+    MEMBER("a15", &_::a15, attr, attr2, attr3);
+    MEMBER("a16", &_::a16, attr, attr2, attr3);
+    MEMBER("a17", &_::a17, attr, attr2, attr3);
+}
 
 template<typename T>
 void test_single() {
     using Current = Test<T>;
     Current obj;
-    using cls_a = describe::extract_attr_t<_attr, Current>;
-    using cls_b = describe::extract_attr_t<_attr2, Current>;
-    using cls_c = describe::extract_attr_t<_attr3, Current>;
-    using cls_d = describe::extract_attr_t<_attr4, Current>;
-    describe::Get<Current>().for_each([&](auto f){
+    using cls_a = describe::extract_t<_attr, Current>;
+    using cls_b = describe::extract_t<_attr2, Current>;
+    using cls_c = describe::extract_t<_attr3, Current>;
+    using cls_d = describe::extract_t<_attr4, Current>;
+    using cls_all_a = describe::extract_all_t<_attr, Current>;
+    using cls_all_b = describe::extract_all_t<_attr2, Current>;
+    using cls_all_c = describe::extract_all_t<_attr3, Current>;
+    using cls_all_d = describe::extract_all_t<_attr4, Current>;
+    describe::Get<Current>::for_each([&](auto f){
         using F = decltype(f);
-        using a = describe::extract_attr_t<_attr, F>;
-        using b = describe::extract_attr_t<_attr2, F>;
-        using c = describe::extract_attr_t<_attr3, F>;
-        using d = describe::extract_attr_t<_attr4, F>;
+        using a = describe::extract_t<_attr, F>;
+        using b = describe::extract_t<_attr2, F>;
+        using c = describe::extract_t<_attr3, F>;
+        using d = describe::extract_t<_attr4, F>;
+        using all_a = describe::extract_all_t<_attr, F>;
+        using all_b = describe::extract_all_t<_attr2, F>;
+        using all_c = describe::extract_all_t<_attr3, F>;
+        using all_d = describe::extract_all_t<_attr4, F>;
         f.get(obj);
     });
 }

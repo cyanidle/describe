@@ -34,10 +34,13 @@ SOFTWARE.
 namespace describe
 {
 
-template<typename...Ts> struct Attrs {};
-template<typename T> struct Tag {using type = T;};
-template<auto field> struct Field;
-template<typename T> constexpr auto Get();
+template<typename...Ts> struct TypeList {
+    static constexpr size_t size = sizeof...(Ts);
+};
+
+template<typename T> struct Tag {
+    using type = T;
+};
 
 namespace detail {
 
@@ -58,41 +61,11 @@ struct info<T, std::enable_if_t<std::is_member_pointer_v<T>>> {
     using type = typename decltype(detail::get_memptr_type(T{}))::type;
 };
 
-inline constexpr std::string_view next_name(std::string_view& src) {
-    auto resStart = src.find("::");
-    auto noColons = resStart == std::string_view::npos || src.find_first_of(',') < resStart;
-    resStart = noColons ? src.find_first_not_of(' ') : resStart + 2;
-    auto resEnd = src.find_first_of(" \t\n\r,", resStart);
-    auto result = src.substr(resStart, resEnd - resStart);
-    src = src.substr(src.find_first_of(',', resEnd) + 1);
-    return result;
-}
-
-template<typename T, typename...Ts>
-constexpr bool has(Attrs<Ts...>) {
-    return (false || ... || std::is_base_of_v<T, Ts>);
-}
-
-template<typename T>
-auto get_attr(Attrs<>) -> Tag<void> {return {};}
-
-template<typename T, typename Head, typename...Ts>
-auto get_attr(Attrs<Head, Ts...>) {
-    if constexpr (std::is_base_of_v<T, Head>) {
-        return Tag<Head>{};
-    } else {
-        return detail::get_attr<T>(Attrs<Ts...>{});
-    }
-}
-
-template<size_t idx, typename Head, typename...Ts> struct pack_idx : pack_idx<idx - 1, Ts...> {};
-template<typename Head, typename...Ts> struct pack_idx<0, Head, Ts...> {using type = Head;};
-
 } //detail
 
-template<auto field>
-struct Field {
-    std::string_view name;
+template<auto field, typename...Attrs>
+struct Member {
+    const char* name;
     static constexpr auto value = field;
     using raw_type = decltype(field);
     using type = typename detail::info<raw_type>::type;
@@ -101,160 +74,113 @@ struct Field {
     static constexpr auto is_field = std::is_member_object_pointer_v<raw_type>;
     static constexpr auto is_function = std::is_function_v<raw_type>;
     static constexpr auto is_enum = std::is_enum_v<raw_type>;
+    using Attributes = TypeList<Attrs...>;
     template<typename T> static constexpr decltype(auto) get(T&& obj) noexcept {
         return std::forward<T>(obj).*field;
     }
+    static constexpr Attributes attrs() {return {};}
 };
 
-template<typename Cls, typename Parent, typename...Fields>
-struct Description : protected Fields...
+// If you get error 'no _OPENVA' -> you forgot to pass params in parens like this: '(x, y, z)'
+#define _OPENVA(...) __VA_ARGS__
+#define _PPCAT(x, y) _PPCAT2(x, y)
+#define _PPCAT2(x, y) x##y
+
+// fallback to make Get<T> return void if T is not described
+auto DescribeHelper(...) -> void;
+
+#define DO_DESCRIBE(templ, use_templ, helper, _name, cls, ...) \
+templ struct helper { \
+    using _ = cls use_templ;  \
+    static constexpr const char* name = _name; \
+    using Attributes = describe::TypeList<__VA_ARGS__>; \
+    static constexpr Attributes attrs() {return {};} \
+    template<typename Fn> static constexpr void for_each(Fn _desc); \
+};\
+templ auto DescribeHelper(describe::Tag<cls use_templ>) -> helper use_templ; \
+templ template<typename Fn> \
+constexpr void helper use_templ::for_each(Fn _desc)
+
+#define DESCRIBE_TEMPLATE(templ, name, cls, use_templ, ...) \
+DO_DESCRIBE(template<_OPENVA templ>, <_OPENVA use_templ>, _PPCAT(cls, _Describe), name, cls, __VA_ARGS__)
+
+#define DESCRIBE(name, cls, ...) \
+DO_DESCRIBE(,,_PPCAT(cls, _Describe), name, cls, __VA_ARGS__)
+
+#define PARENT(...) describe::Get<__VA_ARGS__>::for_each(_desc)
+#define MEMBER(name, x, ...) _desc(describe::Member<x, ##__VA_ARGS__>{name})
+
+template<typename T>
+using Get = decltype(DescribeHelper(Tag<T>{}));
+
+template<typename T>
+constexpr bool is_described_v = !std::is_void_v<Get<T>>;
+template<typename T>
+constexpr bool is_described_struct_v = is_described_v<T> && std::is_class_v<T>;
+template<typename T>
+constexpr bool is_described_enum_v = is_described_v<T> && std::is_enum_v<T>;
+
+namespace detail {
+
+template<typename T>
+auto extract(TypeList<>) -> Tag<void>;
+template<typename T, typename H, typename...Tail>
+auto extract(TypeList<H, Tail...>) {
+    if constexpr (std::is_base_of_v<T, H>) return Tag<H>{};
+    else return extract<T>(TypeList<Tail...>{});
+}
+
+template<typename...Ts>
+struct merge;
+
+template<typename...L, typename...R, typename...Tail>
+struct merge<TypeList<L...>, TypeList<R...>, Tail...>
 {
-    using type = Cls;
-    using parent = Parent;
-    std::string_view name;
-    static constexpr auto is_enum = std::is_enum_v<Cls>;
-    static constexpr auto size = sizeof...(Fields);
-    static constexpr auto npos = size_t(-1);
-    template<auto member> constexpr auto& cast() {return static_cast<Field<member>&>(*this);}
-    template<size_t idx> constexpr auto get() const {
-        using f = typename detail::pack_idx<idx, Fields...>::type;
-        return static_cast<f>(*this);
-    }
-    template<typename F> constexpr void for_each(F&& f) const {
-        (static_cast<void>(f(static_cast<const Fields&>(*this))), ...);
-    }
-    template<auto f> static constexpr size_t index_of(Field<f>) noexcept {
-        size_t result = npos;
-        size_t count = size_t(-1);
-        ((count++, std::is_same_v<Field<f>, Fields> && (result = count)), ...);
-        return result;
-    }
-    constexpr size_t index_of(std::string_view name) const noexcept {
-        size_t result = npos;
-        size_t count = size_t(-1);
-        ((count++, (static_cast<const Fields&>(*this).name == name) && (result = count)), ...);
-        return result;
-    }
-    template<auto f> static constexpr size_t index_of() noexcept {
-        return index_of<f>(Field<f>{});
-    }
+    using type = typename merge<TypeList<L..., R...>, Tail...>::type;
 };
 
-//! Presence of describe::Tag<ns::T> enables ADL for both describe:: AND ns::
-// Main ADL-fallbacks:
-void GetDescription(...);
-Attrs<> GetAttrs(...);
+template<typename T>
+struct merge<T>
+{
+    using type = T;
+};
 
-template<typename C>
+template<>
+struct merge<>
+{
+    using type = TypeList<>;
+};
+
+template<typename T, typename...A>
+auto extract_all(TypeList<A...>)
+    -> typename merge<std::conditional_t<std::is_base_of_v<T, A>, TypeList<A>, TypeList<>>...>::type;
+
+}
+
+template<typename T>
 struct get_attrs {
-    using type = decltype(GetAttrs(Tag<C>{}));
+    using type = typename Get<T>::Attributes;
 };
 
-template<auto field>
-struct get_attrs<Field<field>> {
-    // without Tag<Cls> as arg ADL does not work!
-    using type = decltype(GetAttrs(Tag<typename Field<field>::cls>{}, Field<field>{}));
+template<auto m, typename...A>
+struct get_attrs<Member<m, A...>> {
+    using type = TypeList<A...>;
 };
-
-template<typename Cls, typename...Rest>
-struct get_attrs<Description<Cls, Rest...>> : get_attrs<Cls> {};
-
-template<typename Any>
-struct get_attrs<const Any> : get_attrs<Any> {};
 
 template<typename T>
 using get_attrs_t = typename get_attrs<T>::type;
 
 template<typename T, typename From>
-using extract_attr_t = typename decltype(detail::get_attr<T>(get_attrs_t<From>{}))::type;
+using extract_t = typename decltype(detail::extract<T>(get_attrs_t<From>{}))::type;
 
-template<typename T, typename Who>
-constexpr bool has_attr_v = detail::has<T>(get_attrs_t<Who>{});
-
-template<typename T>
-struct is_described : std::bool_constant<!std::is_void_v<decltype(GetDescription(Tag<T>{}))>> {};
-
-template<typename T>
-constexpr auto is_described_v = is_described<T>::value;
-template<typename T>
-constexpr auto is_described_struct_v = is_described<T>::value && std::is_class_v<T>;
-template<typename T>
-constexpr auto is_described_enum_v = is_described<T>::value && std::is_enum_v<T>;
-
-template<typename T> constexpr auto Get() {
-    constexpr auto res = GetDescription(Tag<T>{});
-    return res;
-}
-
-template<auto...fields, typename Cls>
-constexpr auto Describe(
-    Tag<Cls>, std::string_view clsname, std::string_view names)
-{
-    Description<Cls, void, Field<fields>...> result = {};
-    result.name = clsname;
-    (static_cast<void>(result.template cast<fields>().name = detail::next_name(names)), ...);
-    return result;
-}
-
-template<auto...fields, typename Cls, typename ParCls, typename ParCls2, auto...parFields>
-constexpr auto Describe(
-    Description<ParCls, ParCls2, Field<parFields>...> parent,
-    Tag<Cls>, std::string_view clsname, std::string_view names)
-{
-    Description<Cls, ParCls, Field<parFields>..., Field<fields>...> result = {};
-    result.name = clsname;
-    (static_cast<void>(result.template cast<parFields>().name = parent.template cast<parFields>().name), ...);
-    (static_cast<void>(result.template cast<fields>().name = detail::next_name(names)), ...);
-    return result;
-}
-
-// Helpers
-#define _DESC_STR(...) _DESC_STR2(__VA_ARGS__)
-#define _DESC_STR2(...) #__VA_ARGS__
-#define _DESC_CAT(x, y) _DESC_CAT_AUX(x, y)
-#define _DESC_CAT_AUX(x, y) x##y
-// Black magic: use ppstep for these 4
-#define _DESC_CONTAINS_COMMA(...) _DESC_X_AS_COMMA(__VA_ARGS__, _DESC_COMMA, ~)
-#define _DESC_X_AS_COMMA(_head, x, ...) _DESC_CONTAINS_COMMA_RESULT(x, 0, 1, ~)
-#define _DESC_CONTAINS_COMMA_RESULT(x, _, result, ...) result
-#define _DESC_COMMA ,
-// Macros used to avoid "at least one varg param needed"
-#define _DESC_HEAD(head, ...) head
-#define _DESC_TAIL(...) _DESC_CAT(_DESC_TAIL, _DESC_CONTAINS_COMMA(__VA_ARGS__))(__VA_ARGS__)
-#define _DESC_TAIL0(head)
-#define _DESC_TAIL1(head, ...) __VA_ARGS__
-
-#define DESCRIBE_CLASS(...) \
-    inline constexpr auto GetDescription(::describe::Tag<__VA_ARGS__>) { \
-        using _ = __VA_ARGS__; std::string_view _clsName = _DESC_STR(__VA_ARGS__);
-
-#define DESCRIBE_FIELDS(...) \
-    return ::describe::Describe<__VA_ARGS__>(::describe::Tag<_>{}, _clsName, _DESC_STR(__VA_ARGS__));}
-
-#define DESCRIBE_FIELDS_INHERIT(parent, ...) \
-    return ::describe::Describe<__VA_ARGS__>(::describe::Get<parent>(), ::describe::Tag<_>{}, _clsName, _DESC_STR(__VA_ARGS__));}
-
-#define DESCRIBE(...) \
-    DESCRIBE_CLASS(_DESC_HEAD(__VA_ARGS__, ~)) \
-    DESCRIBE_FIELDS(_DESC_TAIL(__VA_ARGS__))
-
-#define DESCRIBE_INHERIT(parent, ...)  \
-    DESCRIBE_CLASS(_DESC_HEAD(__VA_ARGS__, ~)) \
-    DESCRIBE_FIELDS_INHERIT(parent, _DESC_TAIL(__VA_ARGS__))
-
-//! @achtung @warning THESE Should always be the same for all Translation Units
-#define DESCRIBE_ATTRS(cls, ...) \
-    auto GetAttrs(::describe::Tag<cls>) -> ::describe::Attrs<__VA_ARGS__>;
-
-//! @achtung @warning THESE Should always be the same for all Translation Units
-#define DESCRIBE_FIELD_ATTRS(cls, field, ...) \
-    auto GetAttrs(::describe::Tag<cls>, ::describe::Field<&cls::field>) -> ::describe::Attrs<__VA_ARGS__>;
+template<typename T, typename From>
+using extract_all_t = decltype(detail::extract_all<T>(get_attrs_t<From>{}));
 
 // Utils
 template<typename T>
 constexpr size_t fields_count() {
     size_t res = 0;
-    Get<T>().for_each([&](auto f){
+    Get<T>::for_each([&](auto f){
         if constexpr (f.is_field) res++;
     });
     return res;
@@ -262,9 +188,9 @@ constexpr size_t fields_count() {
 
 template<typename T>
 constexpr auto field_names() {
-    std::array<std::string_view, fields_count<T>()> result;
+    std::array<const char*, fields_count<T>()> result;
     size_t idx = 0;
-    Get<T>().for_each([&](auto f){
+    Get<T>::for_each([&](auto f){
         if constexpr (f.is_field) {
             result[idx++] = f.name;
         }
@@ -272,11 +198,11 @@ constexpr auto field_names() {
     return result;
 }
 
-template<typename Enum, std::enable_if_t<is_described_enum_v<Enum>, int> = 1>
+template<typename Enum>
 [[nodiscard]]
 constexpr bool enum_to_name(Enum value, std::string_view& out) {
     bool found = false;
-    Get<Enum>().for_each([&](auto f){
+    Get<Enum>::for_each([&](auto f){
         if constexpr (f.is_enum) {
             if (!found && f.value == value) {
                 out = f.name;
@@ -287,11 +213,11 @@ constexpr bool enum_to_name(Enum value, std::string_view& out) {
     return found;
 }
 
-template<typename Enum, std::enable_if_t<is_described_enum_v<Enum>, int> = 1>
+template<typename Enum>
 [[nodiscard]]
 constexpr bool name_to_enum(std::string_view name, Enum& out) {
     bool found = false;
-    Get<Enum>().for_each([&](auto f){
+    Get<Enum>::for_each([&](auto f){
         if constexpr (f.is_enum) {
             if (!found && f.name == name) {
                 out = f.value;

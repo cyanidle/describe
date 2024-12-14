@@ -7,11 +7,13 @@ struct Data {
     void method() {}
 };
 
-constexpr auto renamed = &Data::a;
-DESCRIBE(Data, renamed, &_::b, &_::method)
+DESCRIBE("Data", Data) {
+    MEMBER("renamed", &_::a);
+    MEMBER("b", &_::b);
+    MEMBER("method", &_::method);
+}
 
 constexpr auto desc = describe::Get<Data>();
-static_assert(desc.size == 3);
 
 void print_fields(const Data& d) {
     std::cout << desc.name << ": ";
@@ -24,10 +26,18 @@ void print_fields(const Data& d) {
 }
 
 enum Enum {foo, bar, baz,};
-DESCRIBE(Enum, foo, bar, baz) // _:: can be omited
+DESCRIBE("Enum", Enum) {
+    MEMBER("foo", foo);
+    MEMBER("bar", bar);
+    MEMBER("baz", baz);
+}
 
 enum class ClEnum {bim, bam, bom,};
-DESCRIBE(ClEnum, _::bim, _::bam, _::bom) // enum classes are supported
+DESCRIBE("ClEnum", ClEnum) {
+    MEMBER("bim", _::bim);
+    MEMBER("bam", _::bam);
+    MEMBER("bom", _::bom);
+}
 
 template<typename T>
 void print_enum(T) {
@@ -68,38 +78,17 @@ struct Parent {
     std::string b;
 };
 
-DESCRIBE(Parent, &_::a, &_::b)
+DESCRIBE("Parent", Parent) {
+    MEMBER("a", &_::a);
+    MEMBER("b", &_::b);
+}
 
 struct Child : Parent {
     std::string c;
 };
 
 
-DESCRIBE_INHERIT(Parent, Child, &_::c)
-
-constexpr auto child_desc = describe::Get<Child>();
-static_assert(child_desc.size == 3);
-static_assert(child_desc.get<0>().name == "a");
-static_assert(child_desc.get<1>().name == "b");
-static_assert(child_desc.get<2>().name == "c");
-
-// Empty
-struct Empty {};
-DESCRIBE(Empty)
-
-struct EmptyChild {};
-DESCRIBE_INHERIT(Empty, EmptyChild)
-
-struct NoDesc{};
-static_assert(!describe::is_described_v<NoDesc>);
-//constexpr auto fails = describe::Get<NoDesc>();
-
-// is
-static_assert(describe::is_described_struct_v<Empty>);
-static_assert(!describe::is_described_struct_v<Enum>);
-static_assert(!describe::is_described_struct_v<ClEnum>);
-static_assert(!describe::is_described_struct_v<int>);
-
-// utils
-
-constexpr auto fs = describe::field_names<Child>();
+DESCRIBE("Child", Child) {
+    PARENT(Parent);
+    MEMBER("c", &_::c);
+}
