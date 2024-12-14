@@ -65,7 +65,7 @@ struct info<T, std::enable_if_t<std::is_member_pointer_v<T>>> {
 
 template<auto field, typename...Attrs>
 struct Member {
-    const char* name;
+    std::string_view name;
     static constexpr auto value = field;
     using raw_type = decltype(field);
     using type = typename detail::info<raw_type>::type;
@@ -92,7 +92,7 @@ auto DescribeHelper(...) -> void;
 #define DO_DESCRIBE(templ, use_templ, helper, _name, cls, ...) \
 templ struct helper { \
     using _ = cls use_templ;  \
-    static constexpr const char* name = _name; \
+    static constexpr std::string_view name = _name; \
     using Attributes = describe::TypeList<__VA_ARGS__>; \
     static constexpr Attributes attrs() {return {};} \
     template<typename Fn> static constexpr void for_each(Fn _desc); \
@@ -155,7 +155,7 @@ template<typename T, typename...A>
 auto extract_all(TypeList<A...>)
     -> typename merge<std::conditional_t<std::is_base_of_v<T, A>, TypeList<A>, TypeList<>>...>::type;
 
-}
+} //detail
 
 template<typename T>
 struct get_attrs {
