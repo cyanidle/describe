@@ -2,33 +2,15 @@
 
 namespace test {
 
-template<typename T>
+template<typename T, typename U>
 struct Data {
     T a;
-    T b[10];
+    U b[10];
 };
 
-// all macros work just fine. you just must define template<> above them
-template<typename T>
-DESCRIBE(test::Data<T>, &_::a, &_::b)
+DESCRIBE_TEMPLATE((typename T, typename U), "test::Data", Data, (T, U)) {
+    MEMBER("a", &_::a);
+    MEMBER("b", &_::b);
+}
 
 } //test
-
-constexpr auto desc = describe::Get<test::Data<int>>();
-constexpr auto B = desc.get<1>();
-static_assert(B.name == "b");
-static_assert(std::is_same_v<decltype(B)::type, int[10]>);
-
-
-template<auto a, auto b> struct sum {
-    static constexpr auto value = a + b;
-    int as_int = int(value);
-};
-
-// DESCRIBE_CLASS(...) DESCRIBE_FIELDS(...) pair for multi-param templates
-template<auto a, auto b>
-DESCRIBE_CLASS(sum<a, b>)
-DESCRIBE_FIELDS(&_::as_int) //may be empty!
-
-constexpr auto sum_desc = describe::Get<sum<1, 2>>();
-static_assert(sum_desc.name == "sum<a, b>");

@@ -6,6 +6,6 @@ public:
     friend class Shy_Describe;
 };
 
-DESCRIBE(Shy) {
+DESCRIBE("Shy", Shy) {
     MEMBER("a", &_::a);
 }

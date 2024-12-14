@@ -78,6 +78,7 @@ struct Member {
     template<typename T> static constexpr decltype(auto) get(T&& obj) noexcept {
         return std::forward<T>(obj).*field;
     }
+    static constexpr Attributes attrs() {return {};}
 };
 
 // If you get error 'no _OPENVA' -> you forgot to pass params in parens like this: '(x, y, z)'
@@ -88,28 +89,92 @@ struct Member {
 // fallback to make Get<T> return void if T is not described
 auto DescribeHelper(...) -> void;
 
-#define DO_DESCRIBE(templ, names, helper, cls, ...) \
+#define DO_DESCRIBE(templ, use_templ, helper, _name, cls, ...) \
 templ struct helper { \
-    using _ = cls names;  \
-    static constexpr const char* name = #cls; \
-    using Attrs = describe::TypeList<__VA_ARGS__>; \
+    using _ = cls use_templ;  \
+    static constexpr const char* name = _name; \
+    using Attributes = describe::TypeList<__VA_ARGS__>; \
+    static constexpr Attributes attrs() {return {};} \
     template<typename Fn> static constexpr void for_each(Fn _desc); \
 };\
-templ auto DescribeHelper(describe::Tag<cls names>) -> helper names; \
+templ auto DescribeHelper(describe::Tag<cls use_templ>) -> helper use_templ; \
 templ template<typename Fn> \
-constexpr void helper names::for_each(Fn _desc)
+constexpr void helper use_templ::for_each(Fn _desc)
 
-#define DESCRIBE_TEMPLATE(params, cls, names, ...) \
-DO_DESCRIBE(template<_OPENVA params>, <_OPENVA names>, _PPCAT(cls, _Describe), cls, __VA_ARGS__)
+#define DESCRIBE_TEMPLATE(templ, name, cls, use_templ, ...) \
+DO_DESCRIBE(template<_OPENVA templ>, <_OPENVA use_templ>, _PPCAT(cls, _Describe), name, cls, __VA_ARGS__)
 
-#define DESCRIBE(cls, ...) \
-DO_DESCRIBE(,,_PPCAT(cls, _Describe), cls, __VA_ARGS__)
+#define DESCRIBE(name, cls, ...) \
+DO_DESCRIBE(,,_PPCAT(cls, _Describe), name, cls, __VA_ARGS__)
 
 #define PARENT(...) describe::Get<__VA_ARGS__>::for_each(_desc)
 #define MEMBER(name, x, ...) _desc(describe::Member<x, ##__VA_ARGS__>{name})
 
 template<typename T>
 using Get = decltype(DescribeHelper(Tag<T>{}));
+
+template<typename T>
+constexpr bool is_described_v = !std::is_void_v<Get<T>>;
+template<typename T>
+constexpr bool is_described_struct_v = is_described_v<T> && std::is_class_v<T>;
+template<typename T>
+constexpr bool is_described_enum_v = is_described_v<T> && std::is_enum_v<T>;
+
+namespace detail {
+
+template<typename T>
+auto extract(TypeList<>) -> Tag<void>;
+template<typename T, typename H, typename...Tail>
+auto extract(TypeList<H, Tail...>) {
+    if constexpr (std::is_base_of_v<T, H>) return Tag<H>{};
+    else return extract<T>(TypeList<Tail...>{});
+}
+
+template<typename...Ts>
+struct merge;
+
+template<typename...L, typename...R, typename...Tail>
+struct merge<TypeList<L...>, TypeList<R...>, Tail...>
+{
+    using type = typename merge<TypeList<L..., R...>, Tail...>::type;
+};
+
+template<typename T>
+struct merge<T>
+{
+    using type = T;
+};
+
+template<>
+struct merge<>
+{
+    using type = TypeList<>;
+};
+
+template<typename T, typename...A>
+auto extract_all(TypeList<A...>)
+    -> typename merge<std::conditional_t<std::is_base_of_v<T, A>, TypeList<A>, TypeList<>>...>::type;
+
+}
+
+template<typename T>
+struct get_attrs {
+    using type = typename Get<T>::Attributes;
+};
+
+template<auto m, typename...A>
+struct get_attrs<Member<m, A...>> {
+    using type = TypeList<A...>;
+};
+
+template<typename T>
+using get_attrs_t = typename get_attrs<T>::type;
+
+template<typename T, typename From>
+using extract_t = typename decltype(detail::extract<T>(get_attrs_t<From>{}))::type;
+
+template<typename T, typename From>
+using extract_all_t = decltype(detail::extract_all<T>(get_attrs_t<From>{}));
 
 // Utils
 template<typename T>
