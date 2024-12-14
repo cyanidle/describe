@@ -20,7 +20,7 @@ struct Data {
     void method() {}
 };
 
-DESCRIBE(Data) {
+DESCRIBE("Data", Data) {
     MEMBER("renamed", &_::a);
     MEMBER("b", &_::b);
     MEMBER("method", &_::method);
@@ -48,7 +48,7 @@ struct Parent {
     std::string b;
 };
 
-DESCRIBE(Parent) {
+DESCRIBE("Parent", Parent) {
     MEMBER("a", &_::a);
     MEMBER("b", &_::b);
 }
@@ -58,7 +58,7 @@ struct Child : Parent {
 };
 
 
-DESCRIBE(Child) {
+DESCRIBE("Child", Child) {
     PARENT(Parent);
     MEMBER("c", &_::c);
 }
