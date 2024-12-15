@@ -31,6 +31,8 @@ static_assert(std::is_same_v<missing, void>);
 using found = extract_t<BIG, Data>;
 static_assert(std::is_same_v<found, BIG>);
 
+static_assert(has_v<BIG, Data>);
+
 // attr is considered found if it is a subclass!
 using object_check = extract_t<validator, Data>;
 static_assert(std::is_same_v<object_check, in_range<0, 7>>);

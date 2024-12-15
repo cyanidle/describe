@@ -122,6 +122,9 @@ constexpr bool is_described_enum_v = is_described_v<T> && std::is_enum_v<T>;
 
 namespace detail {
 
+template<typename T, typename...A>
+auto has(TypeList<A...>) -> std::bool_constant<(false || ... || std::is_base_of_v<T, A>)>;
+
 template<typename T>
 auto extract(TypeList<>) -> Tag<void>;
 template<typename T, typename H, typename...Tail>
@@ -175,6 +178,9 @@ using extract_t = typename decltype(detail::extract<T>(get_attrs_t<From>{}))::ty
 
 template<typename T, typename From>
 using extract_all_t = decltype(detail::extract_all<T>(get_attrs_t<From>{}));
+
+template<typename T, typename Who>
+constexpr bool has_v = decltype(detail::has<T>(get_attrs_t<Who>{}))::value;
 
 // Utils
 template<typename T>
