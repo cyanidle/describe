@@ -194,7 +194,7 @@ constexpr size_t fields_count() {
 
 template<typename T>
 constexpr auto field_names() {
-    std::array<const char*, fields_count<T>()> result;
+    std::array<std::string_view, fields_count<T>()> result;
     size_t idx = 0;
     Get<T>::for_each([&](auto f){
         if constexpr (f.is_field) {
