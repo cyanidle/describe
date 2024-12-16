@@ -38,7 +38,7 @@ void print_fields(const T& d) {
     std::cout << std::endl;
 }
 
-print_fields(Data{1, 2}); // Data: rename -> 1, b -> 2, 
+print_fields(Data{1, 2}); // Data: renamed -> 1, b -> 2, 
 ```
 
 ## Inheritance
