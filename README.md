@@ -26,9 +26,9 @@ DESCRIBE("Data", Data) {
     MEMBER("method", &_::method);
 }
 
-constexpr auto desc = describe::Get<Data>();
-
-void print_fields(const Data& d) {
+template<typename T>
+void print_fields(const T& d) {
+    constexpr auto desc = describe::Get<T>();
     std::cout << desc.name << ": ";
     desc.for_each([&](auto f){
         if constexpr (f.is_field) {
@@ -37,6 +37,8 @@ void print_fields(const Data& d) {
     });
     std::cout << std::endl;
 }
+
+print_fields(Data{1, 2}); // Data: rename -> 1, b -> 2, 
 ```
 
 ## Inheritance
