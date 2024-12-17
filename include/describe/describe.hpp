@@ -92,14 +92,14 @@ auto DescribeHelper(...) -> void;
 #define DO_DESCRIBE(templ, use_templ, helper, _name, cls, ...) \
 templ struct helper { \
     using _ = cls use_templ;  \
-    static constexpr std::string_view name = _name; \
+    [[maybe_unused]] static constexpr std::string_view name = _name; \
     using Attributes = describe::TypeList<__VA_ARGS__>; \
     static constexpr Attributes attrs() {return {};} \
     template<typename Fn> static constexpr void for_each(Fn _desc); \
 };\
-templ auto DescribeHelper(describe::Tag<cls use_templ>) -> helper use_templ; \
+[[maybe_unused]] templ auto DescribeHelper(describe::Tag<cls use_templ>) -> helper use_templ; \
 templ template<typename Fn> \
-constexpr void helper use_templ::for_each(Fn _desc)
+constexpr void helper use_templ::for_each([[maybe_unused]] Fn _desc)
 
 #define DESCRIBE_TEMPLATE(templ, name, cls, use_templ, ...) \
 DO_DESCRIBE(template<_OPENVA templ>, <_OPENVA use_templ>, _PPCAT(cls, _Describe), name, cls, __VA_ARGS__)
