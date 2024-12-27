@@ -97,7 +97,7 @@ templ struct helper { \
     static constexpr Attributes attrs() {return {};} \
     template<typename Fn> static constexpr void for_each(Fn _desc); \
 };\
-[[maybe_unused]] templ auto DescribeHelper(describe::Tag<cls use_templ>) -> helper use_templ; \
+templ [[maybe_unused]] auto DescribeHelper(describe::Tag<cls use_templ>) -> helper use_templ; \
 templ template<typename Fn> \
 constexpr void helper use_templ::for_each([[maybe_unused]] Fn _desc)
 
