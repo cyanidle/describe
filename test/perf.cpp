@@ -30,6 +30,18 @@ struct Test {
     T a15;
     T a16;
     T a17;
+    T a18;
+    T a19;
+    T a20;
+    T a21;
+    T a22;
+    T a23;
+    T a24;
+    T a25;
+    T a26;
+    T a27;
+    T a28;
+    T a29;
 };
 
 DESCRIBE_TEMPLATE((typename T), "Test", Test, (T), attr, attr2, attr3) {
@@ -52,6 +64,18 @@ DESCRIBE_TEMPLATE((typename T), "Test", Test, (T), attr, attr2, attr3) {
     MEMBER("a15", &_::a15, attr, attr2, attr3);
     MEMBER("a16", &_::a16, attr, attr2, attr3);
     MEMBER("a17", &_::a17, attr, attr2, attr3);
+    MEMBER("a18", &_::a18, attr, attr2, attr3);
+    MEMBER("a19", &_::a19, attr, attr2, attr3);
+    MEMBER("a20", &_::a20, attr, attr2, attr3);
+    MEMBER("a21", &_::a21, attr, attr2, attr3);
+    MEMBER("a22", &_::a22, attr, attr2, attr3);
+    MEMBER("a23", &_::a23, attr, attr2, attr3);
+    MEMBER("a24", &_::a24, attr, attr2, attr3);
+    MEMBER("a25", &_::a25, attr, attr2, attr3);
+    MEMBER("a26", &_::a26, attr, attr2, attr3);
+    MEMBER("a27", &_::a27, attr, attr2, attr3);
+    MEMBER("a28", &_::a28, attr, attr2, attr3);
+    MEMBER("a29", &_::a29, attr, attr2, attr3);
 }
 
 template<typename T>
@@ -86,5 +110,5 @@ void test_all() {
 }
 
 void test() {
-    test_all<int, bool, char, char16_t, char32_t, attr, attr2, attr3>();
+    test_all<int, bool, char, char16_t, char32_t, attr, attr2, attr3, float, double>();
 }
