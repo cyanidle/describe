@@ -197,9 +197,45 @@ constexpr auto field_names() {
     std::array<std::string_view, fields_count<T>()> result;
     size_t idx = 0;
     Get<T>::for_each([&](auto f){
-        if constexpr (f.is_field) {
-            result[idx++] = f.name;
-        }
+        if constexpr (f.is_field) result[idx++] = f.name;
+    });
+    return result;
+}
+
+template<typename T>
+constexpr size_t enums_count() {
+    size_t res = 0;
+    Get<T>::for_each([&](auto f){
+        if constexpr (f.is_enum) res++;
+    });
+    return res;
+}
+
+template<typename T>
+constexpr auto enum_names() {
+    std::array<std::string_view, enums_count<T>()> result;
+    size_t idx = 0;
+    Get<T>::for_each([&](auto f){
+        if constexpr (f.is_enum) result[idx++] = f.name;
+    });
+    return result;
+}
+
+template<typename T>
+constexpr size_t methods_count() {
+    size_t res = 0;
+    Get<T>::for_each([&](auto f){
+        if constexpr (f.is_method) res++;
+    });
+    return res;
+}
+
+template<typename T>
+constexpr auto method_names() {
+    std::array<std::string_view, methods_count<T>()> result;
+    size_t idx = 0;
+    Get<T>::for_each([&](auto f){
+        if constexpr (f.is_method) result[idx++] = f.name;
     });
     return result;
 }
