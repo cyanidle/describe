@@ -115,10 +115,21 @@ using Get = decltype(DescribeHelper(Tag<T>{}));
 
 template<typename T>
 constexpr bool is_described_v = !std::is_void_v<Get<T>>;
+
+template<typename T, typename R = void>
+using if_described_t = std::enable_if_t<is_described_v<T>, R>;
+
 template<typename T>
 constexpr bool is_described_struct_v = is_described_v<T> && std::is_class_v<T>;
+
+template<typename T, typename R = void>
+using if_described_struct_t = std::enable_if_t<is_described_struct_v<T>, R>;
+
 template<typename T>
 constexpr bool is_described_enum_v = is_described_v<T> && std::is_enum_v<T>;
+
+template<typename T, typename R = void>
+using if_described_enum_t = std::enable_if_t<is_described_enum_v<T>, R>;
 
 namespace detail {
 
@@ -183,7 +194,7 @@ template<typename T, typename Who>
 constexpr bool has_v = decltype(detail::has<T>(get_attrs_t<Who>{}))::value;
 
 // Utils
-template<typename T>
+template<typename T, if_described_struct_t<T, int> = 1>
 constexpr size_t fields_count() {
     size_t res = 0;
     Get<T>::for_each([&](auto f){
@@ -192,7 +203,7 @@ constexpr size_t fields_count() {
     return res;
 }
 
-template<typename T>
+template<typename T, if_described_struct_t<T, int> = 1>
 constexpr auto field_names() {
     std::array<std::string_view, fields_count<T>()> result;
     size_t idx = 0;
@@ -202,7 +213,7 @@ constexpr auto field_names() {
     return result;
 }
 
-template<typename T>
+template<typename T, if_described_enum_t<T, int> = 1>
 constexpr size_t enums_count() {
     size_t res = 0;
     Get<T>::for_each([&](auto f){
@@ -211,7 +222,7 @@ constexpr size_t enums_count() {
     return res;
 }
 
-template<typename T>
+template<typename T, if_described_enum_t<T, int> = 1>
 constexpr auto enum_names() {
     std::array<std::string_view, enums_count<T>()> result;
     size_t idx = 0;
@@ -221,7 +232,7 @@ constexpr auto enum_names() {
     return result;
 }
 
-template<typename T>
+template<typename T, if_described_struct_t<T, int> = 1>
 constexpr size_t methods_count() {
     size_t res = 0;
     Get<T>::for_each([&](auto f){
@@ -230,7 +241,7 @@ constexpr size_t methods_count() {
     return res;
 }
 
-template<typename T>
+template<typename T, if_described_struct_t<T, int> = 1>
 constexpr auto method_names() {
     std::array<std::string_view, methods_count<T>()> result;
     size_t idx = 0;
@@ -240,7 +251,7 @@ constexpr auto method_names() {
     return result;
 }
 
-template<typename Enum>
+template<typename Enum, if_described_enum_t<Enum, int> = 1>
 [[nodiscard]]
 constexpr bool enum_to_name(Enum value, std::string_view& out) {
     bool found = false;
@@ -255,7 +266,7 @@ constexpr bool enum_to_name(Enum value, std::string_view& out) {
     return found;
 }
 
-template<typename Enum>
+template<typename Enum, if_described_enum_t<Enum, int> = 1>
 [[nodiscard]]
 constexpr bool name_to_enum(std::string_view name, Enum& out) {
     bool found = false;
