@@ -6,8 +6,7 @@ Minimal C++17 Reflection Library in < 300 LOC.
 * Inheritance (NEW: Multiple inheritance)
 * Enums support
 * Templates support
-* Friend (private variables) support
-* Constexpr nonattributes for classes AND fields (NEW: extract-all)
+* Constexpr attributes for classes AND fields (NEW: extract-all)
 
 # Usage
 
