@@ -1,5 +1,5 @@
 # describe
-Minimal C++17 Reflection Library in 200! LOC. 
+Minimal C++17 Reflection Library in < 300 LOC. 
 
 # Features
 * Constexpr field pointer + name iteration
