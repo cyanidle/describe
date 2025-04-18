@@ -76,10 +76,24 @@ struct Member {
     static constexpr auto is_enum = std::is_enum_v<raw_type>;
     using Attributes = TypeList<Attrs...>;
     template<typename T> static constexpr decltype(auto) get(T&& obj) noexcept {
+        static_assert(is_field);
         return std::forward<T>(obj).*field;
+    }
+    template<typename Object, typename...Args> static constexpr decltype(auto) call(Object&& object, Args&&...args) noexcept {
+        static_assert(is_method);
+        return (std::forward<Object>(object).*value)(std::forward<Args>(args)...);
     }
     static constexpr Attributes attrs() {return {};}
 };
+
+template<auto f, typename...A>
+auto of(Member<f, A...> mem) -> typename decltype(mem)::type;
+
+template<auto f, typename...A>
+auto cls(Member<f, A...> mem) -> typename decltype(mem)::cls;
+
+template<auto f, typename...A>
+auto attrs(Member<f, A...> mem) -> TypeList<A...>;
 
 // If you get error 'no _OPENVA' -> you forgot to pass params in parens like this: '(x, y, z)'
 #define _OPENVA(...) __VA_ARGS__
@@ -176,8 +190,8 @@ struct get_attrs {
     using type = typename Get<T>::Attributes;
 };
 
-template<auto m, typename...A>
-struct get_attrs<Member<m, A...>> {
+template<typename...A>
+struct get_attrs<TypeList<A...>> {
     using type = TypeList<A...>;
 };
 

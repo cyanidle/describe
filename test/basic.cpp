@@ -1,5 +1,6 @@
 #include <describe/describe.hpp>
 #include <iostream>
+#include <type_traits>
 
 struct Data {
     int a;
@@ -18,6 +19,10 @@ constexpr auto desc = describe::Get<Data>();
 void print_fields(const Data& d) {
     std::cout << desc.name << ": ";
     desc.for_each([&](auto f){
+
+        using cls = decltype(cls(f));
+        static_assert(std::is_same_v<cls, Data>);
+
         if constexpr (f.is_field) {
             std::cout << f.name << " -> " << f.get(d) << ", ";
         }
