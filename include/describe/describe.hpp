@@ -3,7 +3,7 @@ describe.hpp
 
 MIT License
 
-Copyright (c) 2024 Доронин Алексей
+Copyright (c) 2025 Doronin Alexej
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -107,11 +107,11 @@ auto DescribeHelper(...) -> void;
 templ struct helper { \
     using _ = cls use_templ;  \
     [[maybe_unused]] static constexpr std::string_view name = _name; \
-    using Attributes = describe::TypeList<__VA_ARGS__>; \
+    using Attributes = ::describe::TypeList<__VA_ARGS__>; \
     static constexpr Attributes attrs() {return {};} \
     template<typename Fn> static constexpr void for_each(Fn _desc); \
 };\
-templ [[maybe_unused]] auto DescribeHelper(describe::Tag<cls use_templ>) -> helper use_templ; \
+templ [[maybe_unused]] auto DescribeHelper(::describe::Tag<cls use_templ>) -> helper use_templ; \
 templ template<typename Fn> \
 constexpr void helper use_templ::for_each([[maybe_unused]] Fn _desc)
 
@@ -121,8 +121,8 @@ DO_DESCRIBE(template<_OPENVA templ>, <_OPENVA use_templ>, _PPCAT(cls, _Describe)
 #define DESCRIBE(name, cls, ...) \
 DO_DESCRIBE(,,_PPCAT(cls, _Describe), name, cls, __VA_ARGS__)
 
-#define PARENT(...) describe::Get<__VA_ARGS__>::for_each(_desc)
-#define MEMBER(name, x, ...) _desc(describe::Member<x, ##__VA_ARGS__>{name})
+#define PARENT(...) ::describe::Get<__VA_ARGS__>::for_each(_desc)
+#define MEMBER(name, x, ...) _desc(::describe::Member<x, ##__VA_ARGS__>{name})
 
 template<typename T>
 using Get = decltype(DescribeHelper(Tag<T>{}));
@@ -192,6 +192,11 @@ struct get_attrs {
 
 template<typename...A>
 struct get_attrs<TypeList<A...>> {
+    using type = TypeList<A...>;
+};
+
+template<auto f, typename...A>
+struct get_attrs<Member<f, A...>> {
     using type = TypeList<A...>;
 };
 

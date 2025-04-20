@@ -1,5 +1,11 @@
 # describe
-Minimal C++17 Reflection Library in 300 LOC.
+Minimal C++17 header-only Compile-Time Reflection Library in ~300 LOC.
+
+DSCRIBE() + MEMBER() macros allow to create compile-time descriptions for later use in
+deserialization, introspection, RPC, meta-objects system and many more
+
+It is simple in API and implementation. Compilation is very fast, considering a very small amount of templates.
+Any impact on compilation is lazy (at the place of use)
 
 # Features
 * Compile time introspection of classes
@@ -7,14 +13,16 @@ Minimal C++17 Reflection Library in 300 LOC.
 * Enumerations support
 * Templates support
 * Compile time attributes
-* [Aliases](#aliases)
-
-# Easy interop
-* [nlohmann_json](./interop/nlohmann.hpp)
-* [Boost.Json](./interop/boost.hpp)
-* [RapidJson](./interop/rapid.hpp)
+* Aliases
 
 # Examples
+* [Boost.Json](./examples/boost.cpp): Basic integration example
+* [nlohmann_json](./examples/nlohmann.cpp): Attributes usage example
+* [go_interface](./examples/go_interface.cpp): Advanced meta-magic example
+* [LUA Bindings](https://github.com/cyanidle/glua): Auto-generate bindings with LUA
+* [RPC](https://github.com/cyanidle/rpcxx): Full-fledged JSON-RPC library with Deserialization based on describe
+
+# Usage
 
 ## Basic
 ```cpp
@@ -62,7 +70,7 @@ DESCRIBE("Parent", Parent) {
     MEMBER("b", &_::b);
 }
 
-struct Child : Parent, Parent2 {
+struct Child : Parent {
     std::string c;
 };
 
