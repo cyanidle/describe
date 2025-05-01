@@ -3,7 +3,6 @@
 #ifndef DESC_BOOST_CONV_HPP
 #define DESC_BOOST_CONV_HPP
 
-#include <boost/json/pilfer.hpp>
 #include <describe/describe.hpp>
 #include <boost/json/value_from.hpp>
 #include <boost/json/value_to.hpp>
