@@ -92,8 +92,8 @@ static void check_range(std::string_view name, int val, int min, int max) {
     if (val < min || val > max) {
         throw runtime_error(
             string{name} +
-            ": value:" + to_string(val) +
-            " : not in range: [" + to_string(min) + "-" + to_string(max) + "]");
+            ": value: (" + to_string(val) +
+            ") => not in range: [" + to_string(min) + "-" + to_string(max) + "]");
     }
 }
 
@@ -104,19 +104,20 @@ struct nlohmann::adl_serializer<T, describe::if_described_struct_t<T>>
     static void from_json(BasicJsonType && j, TargetType& val)
     {
         describe::Get<T>::for_each([&](auto info){
+            using Field = decltype(info);
             if constexpr (info.is_field) {
                 auto& field = info.get(val);
                 field = j[info.name].template get<decltype(of(info))>();
-                if constexpr (describe::has_v<WithQuestionMark, decltype(attrs(info))>) {
+                if constexpr (describe::has_v<WithQuestionMark, Field>) {
                     if (field.size() && field.back() == '?') {
                         field.pop_back();
                     }
                 }
-                using range = describe::extract_t<InRangeBase, decltype(attrs(info))>;
+                using range = describe::extract_t<InRangeBase, Field>;
                 if constexpr (!std::is_void_v<range>) {
                     check_range(info.name, field, range::Min, range::Max);
                 }
-                using validator = describe::extract_t<ValidatedBase, decltype(attrs(info))>;
+                using validator = describe::extract_t<ValidatedBase, Field>;
                 if constexpr (!std::is_void_v<validator>) {
                     validator::validate(field);
                 }
@@ -141,9 +142,10 @@ struct nlohmann::adl_serializer<T, describe::if_described_struct_t<T>>
     {
         j = json::object();
         describe::Get<T>::for_each([&](auto info){
+            using Field = decltype(info);
             if constexpr (info.is_field) {
                 auto& field = info.get(val);
-                if constexpr (describe::has_v<WithQuestionMark, decltype(attrs(info))>) {
+                if constexpr (describe::has_v<WithQuestionMark, Field>) {
                     j[info.name] = json(field + "?");
                 } else {
                     j[info.name] = json(field);
