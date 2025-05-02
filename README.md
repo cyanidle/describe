@@ -1,7 +1,7 @@
 # describe
 Minimal C++17 header-only Compile-Time Reflection Library in ~300 LOC.
 
-DSCRIBE() + MEMBER() macros allow to create compile-time descriptions for later use in
+DESCRIBE() + MEMBER() macros allow to create compile-time descriptions for later use in
 deserialization, introspection, RPC, meta-objects system and many more
 
 It is simple in API and implementation. Compilation is very fast, considering a very small amount of templates.
